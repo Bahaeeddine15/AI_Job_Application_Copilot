@@ -1,6 +1,7 @@
 from fastapi import APIRouter
 from app.schemas.analysis_schema import JobKeywordsRequest, SimilarityScoreRequest
 from app.services.analysis_service import AnalysisService
+from app.services.response_service import success_response
 
 router = APIRouter(prefix="/api/analysis",
                    tags=["Analysis"])
@@ -9,13 +10,7 @@ router = APIRouter(prefix="/api/analysis",
 @router.post("/job-keywords")
 def job_keywords(payload: JobKeywordsRequest):
     keywords = AnalysisService.extract_keywords(payload.job_description)
-
-    return {
-        "status": "success",
-        "data": {
-            "keywords": keywords
-        }
-    }
+    return success_response(data={"keywords": keywords})
 
 
 @router.post("/similarity-score")
@@ -24,10 +19,4 @@ def similarity_score(payload: SimilarityScoreRequest):
         payload.resume,
         payload.job_description
     )
-
-    return {
-        "status": "success",
-        "data": {
-            "similarity_score": score
-        }
-    }
+    return success_response(data={"similarity_score": score})

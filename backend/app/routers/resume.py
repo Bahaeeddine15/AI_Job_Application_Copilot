@@ -1,42 +1,15 @@
 from fastapi import APIRouter
-from pydantic import BaseModel
+from app.schemas.resume_schema import ResumeRequest, SkillsResponse, SummaryResponse
+from app.services.response_service import success_response
 
-router = APIRouter(
-    prefix="/api/resume",
-    tags=["Resume"]
-)
+router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
-
-# ===== Request Schema =====
-class ResumeRequest(BaseModel):
-    resume: str
-
-
-# ===== Extract Skills =====
-@router.post("/extract-skills")
-async def extract_skills(request: ResumeRequest):
-
-    # logique temporaire
+@router.post("/extract-skills", response_model=dict) # You can even use your response schemas here
+async def extract_skills(payload: ResumeRequest):
     fake_skills = ["Python", "React", "SQL"]
+    return success_response(data={"skills": fake_skills})
 
-    return {
-        "status": "success",
-        "data": {
-            "skills": fake_skills
-        }
-    }
-
-
-# ===== Summarize Resume =====
-@router.post("/summarize")
-async def summarize_resume(request: ResumeRequest):
-
+@router.post("/summarize", response_model=dict)
+async def summarize_resume(payload: ResumeRequest):
     fake_summary = "Full-stack developer with experience in modern technologies."
-
-    return {
-        "status": "success",
-        "data": {
-            "summary": fake_summary
-        }
-    }
-    
+    return success_response(data={"summary": fake_summary})

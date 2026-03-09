@@ -11,7 +11,7 @@ from app.services.ai_service import AIService
 from app.services.ai_service import extract_skills, similarity_score
 from app.services.response_service import success_response"""
 
-router = APIRouter(prefix="/application", tags=["Application"])
+router = APIRouter(prefix="/api/application", tags=["Application"])
 
 
 """@router.post("/analyze_resume")

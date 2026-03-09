@@ -6,6 +6,7 @@ app = FastAPI(title="AI Job Copilot API")
 app.include_router(system.router)
 app.include_router(analysis.router)
 app.include_router(application.router)
+app.include_router(resume.router)
 
 @app.get("/")
 async def root():
