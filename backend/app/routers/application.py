@@ -7,7 +7,18 @@ from app.schemas.application_schema import (
 # We import the service that will eventually hold your OpenAI logic
 from app.services.ai_service import AIService 
 
+"""from fastapi import APIRouter
+from app.services.ai_service import extract_skills, similarity_score
+from app.services.response_service import success_response"""
+
 router = APIRouter(prefix="/application", tags=["Application"])
+
+
+"""@router.post("/analyze_resume")
+def analyze_resume(resume: str, job_description: str):
+    skills = extract_skills(resume)
+    score = similarity_score(resume, job_description)
+    return success_response({"skills": skills, "score": score})"""
 
 @router.post("/analyze")
 async def analyze_application(payload: AnalyzeRequest):

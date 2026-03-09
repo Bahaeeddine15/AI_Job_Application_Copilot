@@ -39,3 +39,4 @@ async def summarize_resume(request: ResumeRequest):
             "summary": fake_summary
         }
     }
+    

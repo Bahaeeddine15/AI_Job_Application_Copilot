@@ -1,43 +1,33 @@
-from fastapi import APIRouter , Body
+from fastapi import APIRouter
+from app.schemas.analysis_schema import JobKeywordsRequest, SimilarityScoreRequest
+from app.services.analysis_service import AnalysisService
 
-router = APIRouter(
-    prefix="/api/analysis",
-    tags=["Analysis"]
-)
+router = APIRouter(prefix="/api/analysis",
+                   tags=["Analysis"])
+
 
 @router.post("/job-keywords")
-def job_keywords(playload: dict = Body(...)):
-     
-     """
-     
-    Purpose: Extract top keywords from job description.
-    Request:
-      { "job_description": "string" }
-    Response:
-      { "status": "success", "data": { "keywords": [...] } }
-    """
-     # Placeholder (you'll replace with real logic later)
+def job_keywords(payload: JobKeywordsRequest):
+    keywords = AnalysisService.extract_keywords(payload.job_description)
 
-     return {
-        "status": "success",
-        "data": {
-            "keywords": []
-        }
-    }
-
-@router.post("/similarity-score")
-def similarity_score(payload: dict = Body(...)):
-    """
-    Purpose: Return similarity score only (lighter endpoint).
-    Request:
-      { "resume": "string", "job_description": "string" }
-    Response:
-      { "status": "success", "data": { "similarity_score": 0.82 } }
-    """
-    # Placeholder (you'll replace with real logic later)
     return {
         "status": "success",
         "data": {
-            "similarity_score": 0.0
+            "keywords": keywords
+        }
+    }
+
+
+@router.post("/similarity-score")
+def similarity_score(payload: SimilarityScoreRequest):
+    score = AnalysisService.calculate_similarity(
+        payload.resume,
+        payload.job_description
+    )
+
+    return {
+        "status": "success",
+        "data": {
+            "similarity_score": score
         }
     }
