@@ -1,40 +1,197 @@
 from typing import List, Tuple
+from app.core.config import settings
+from google import genai
+import json
+import re
+
+
 
 class AIService:
+    # Initialize the Gemini model once for the entire class to reuse across methods
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    model_name = "gemini-2.5-flash"
+    
+   
+    @classmethod
+    async def extract_keywords(cls, job_description: str) -> List[str]:
+        prompt = f"""
+                    You are an AI assistant for job analysis.
+
+                    Extract the most important job keywords from the following job description.
+
+                    Rules:
+                    - Return ONLY a valid JSON array
+                    - No explanation
+                    - No markdown
+                    - Keep keywords short and relevant
+                    - Maximum 10 keywords
+
+                    Job Description:
+                    {job_description}
+                """
+        text = cls._generate_text(prompt) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
+        return cls._extract_json_array(text) # we expect the model to return a text that contains a JSON array of keywords, we use the helper function _extract_json_array to parse that text and get the list of keywords as a python list
+
+    @classmethod
+    async def extract_skills(cls, resume: str) -> List[str]:
+        prompt = f"""
+                    You are an AI assistant for resume analysis.
+
+                    Extract the main technical and professional skills from the following resume.
+
+                    Rules:
+                    - Return ONLY a valid JSON array
+                    - No explanation
+                    - No markdown
+                    - Maximum 12 skills
+
+                    Resume:
+                    {resume}
+                """
+        text = cls._generate_text(prompt)
+        return cls._extract_json_array(text)
+
+    @classmethod
+    async def similarity_score(cls, resume: str, job_description: str) -> float:
+        prompt = f"""
+                    You are an AI assistant for resume-job matching.
+
+                    Compare the following resume and job description.
+
+                    Rules:
+                    - Return ONLY one number between 0 and 1
+                    - No explanation
+                    - No extra text
+
+                    Resume:
+                    {resume}
+
+                    Job Description:
+                    {job_description}
+                """
+        text = cls._generate_text(prompt)
+        return cls._extract_float(text)
+
+    @classmethod
+    async def generate_cover_letter(cls, resume: str, job_description: str) -> str:
+        prompt = f"""
+                    You are an AI assistant for job applications.
+
+                    Write a professional, concise, tailored cover letter based on the resume and job description below.
+
+                    Rules:
+                    - Professional tone
+                    - Clear and natural English
+                    - 3 to 5 paragraphs
+                    - No placeholders like [Company Name]
+                    - Ready to use
+
+                    Resume:
+                    {resume}
+
+                    Job Description:
+                    {job_description}
+                """
+        return cls._generate_text(prompt)
+    
+# these two methods must be implemented correctlyy bcuz i don't know what are for'
+# """
+# @staticmethod
+# async def analyze_resume_vs_job(resume: str, job_description: str) -> dict:
+#     
+#    # Connects the internal logic to return the structure 
+#     #expected by the /application/analyze router.
+#     
+#     skills = extract_skills(resume)
+#     matched, missing = compare_skills(skills, job_description)
+#     score = similarity_score(resume, job_description)
+#     
+#     return {
+#         "match_score": int(score * 100), # Convert 0.78 to 78
+#         "matched_skills": matched,
+#         "missing_skills": missing
+#     }
+# 
+# 
+# @staticmethod
+# async def optimize_resume_content(resume: str, job_description: str) -> List[str]:
+#     # Mocking optimization suggestions
+#     return [
+#         "Use measurable achievements (e.g., 'Improved speed by 20%')",
+#         "Add missing keywords: Docker, AWS",
+#         "Quantify your results in the experience section"
+#     ]
+# """
+ #helper functions for parsing Gemini responses
+
     @staticmethod
-    async def analyze_resume_vs_job(resume: str, job_description: str) -> dict:
+    def _extract_json_array(text: str) -> List[str]:
         """
-        Connects the internal logic to return the structure 
-        expected by the /application/analyze router.
+        Try to extract and parse a JSON array from model output.
+        Example input:
+            '["Python", "FastAPI", "Docker"]'
         """
-        skills = extract_skills(resume)
-        matched, missing = compare_skills(skills, job_description)
-        score = similarity_score(resume, job_description)
+        try:
+            match = re.search(r"\[.*\]", text, re.DOTALL) #looks for something like a JSON array inside the text
+            if not match:
+                raise ValueError("No JSON array found in response.")
+
+            data = json.loads(match.group(0)) #convert the matched string into a python list , we use groupe(0 ) to get the full match of regex (JSON array  nrmally)
+
+            if not isinstance(data, list):  # check if data is a list
+                raise ValueError("Parsed data is not a list.")
+
+            return [str(item).strip() for item in data] #ensure all items inside data are string nd remove extra whitespace
+
+        except Exception as e:
+            raise ValueError(f"Failed to parse JSON array: {str(e)}")
+
+    @staticmethod
+    def _extract_float(text: str) -> float:
+        """
+        Extract a float number from model output.
+        Example inputs:
+            '0.82'
+            'The similarity score is 0.82'
+        """
+        try:
+            match = re.search(r"\d+(\.\d+)?", text) #looks for a number in the text, it can be an integer or a decimal (float)
+            if not match:
+                raise ValueError("No numeric score found in response.")
+
+            score = float(match.group(0)) #d same we get the whole matched number and convert it to a float
+
+            if score < 0 or score > 1:
+                raise ValueError("Score is outside valid range [0, 1].")
+
+            return score
+
+        except Exception as e:
+            raise ValueError(f"Failed to parse similarity score: {str(e)}")
+
+    @classmethod
+    def _generate_text(cls, prompt: str) -> str:
+        """
+        Send prompt to Gemini and return clean text.
+        """
+        try:
+            response = cls.client.models.generate_content(
+                model=cls.model_name,
+                contents=prompt
+            )# this is the api call to gemini, it send a prompt and expects a response object that contains the generated text in a property called "text"
+
+            if not response or not getattr(response, "text", None): # check if we got a response (not empty) and if it has the text property (the scond condition)
+                raise ValueError("Empty or invalid response from Gemini.")
+
+            return response.text.strip()
+
+        except Exception as e:
+            raise Exception(f"Gemini request failed: {str(e)}")
         
-        return {
-            "match_score": int(score * 100), # Convert 0.78 to 78
-            "matched_skills": matched,
-            "missing_skills": missing
-        }
-
-    @staticmethod
-    async def generate_cover_letter(resume: str, job_description: str, tone: str = "professional") -> str:
-        # Mocking the AI response
-        return f"Dear Hiring Manager,\n\nI am excited to apply for this role. My skills include Python and FastAPI.\n\nBest regards,\nCandidate"
-
-    @staticmethod
-    async def optimize_resume_content(resume: str, job_description: str) -> List[str]:
-        # Mocking optimization suggestions
-        return [
-            "Use measurable achievements (e.g., 'Improved speed by 20%')",
-            "Add missing keywords: Docker, AWS",
-            "Quantify your results in the experience section"
-        ]
 
 # --- Internal Helper Functions (Keep these below the class) ---
 
-def extract_skills(resume: str) -> List[str]:
-    return ["Python", "FastAPI", "SQL"]
+
 
 def compare_skills(skills: List[str], job_description: str) -> Tuple[List[str], List[str]]:
     job_keywords = job_description.lower().split()
@@ -42,7 +199,3 @@ def compare_skills(skills: List[str], job_description: str) -> Tuple[List[str], 
     missing = [skill for skill in skills if skill.lower() not in job_keywords]
     return matched, missing
 
-def similarity_score(resume: str, job_description: str) -> float:
-    matched, _ = compare_skills(extract_skills(resume), job_description)
-    skills = extract_skills(resume)
-    return len(matched) / len(skills) if skills else 0.0
