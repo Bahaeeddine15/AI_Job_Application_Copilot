@@ -124,6 +124,31 @@ class AIService:
 # """
  #helper functions for parsing Gemini responses
 
+    @classmethod
+    async def optimize_resume_content(cls, resume: str, job_description: str) -> List[str]:
+        prompt = f"""
+                    You are an AI assistant specialized in resume optimization.
+
+                    Analyze the resume and the job description.
+
+                    Return ONLY a JSON array of improvement suggestions.
+
+                    Rules:
+                    - No explanation
+                    - No markdown
+                    - Maximum 6 suggestions
+                    - Each suggestion must be short and actionable
+
+                    Resume:
+                    {resume}
+
+                    Job Description:
+                    {job_description}
+                """
+
+        text = cls._generate_text(prompt)
+        return cls._extract_json_array(text)
+
     @staticmethod
     def _extract_json_array(text: str) -> List[str]:
         """

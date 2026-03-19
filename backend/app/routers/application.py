@@ -2,14 +2,11 @@ from fastapi import APIRouter, HTTPException
 from app.schemas.application_schema import (
     AnalyzeRequest, 
     CoverLetterRequest, 
-    OptimizeRequest
+    OptimizeResumeRequest
 )
 # We import the service that will eventually hold your OpenAI logic
-from app.services.ai_service import AIService 
-
-"""from fastapi import APIRouter
-from app.services.ai_service import extract_skills, similarity_score
-from app.services.response_service import success_response"""
+from app.services.ai_service import AIService
+from app.services.response_service import error_response, success_response 
 
 router = APIRouter(prefix="/api/application", tags=["Application"])
 
@@ -40,40 +37,33 @@ async def analyze_application(payload: AnalyzeRequest):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/generate-cover-letter")
-async def generate_cover_letter(payload: CoverLetterRequest):
-    """
-    Endpoint to generate a tailored AI cover letter.
-    """
+async def generate_cover_letter_endpoint(request: CoverLetterRequest):
     try:
-        letter = await AIService.generate_cover_letter(
-            payload.resume, 
-            payload.job_description, 
-            payload.tone
+        result = await AIService.generate_cover_letter(
+            request.resume,
+            request.job_description
         )
-        return {
-            "status": "success",
-            "data": {
-                "cover_letter": letter
-            }
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail="Failed to generate cover letter")
 
-@router.post("/optimize-resume")
-async def optimize_resume(payload: OptimizeRequest):
-    """
-    Endpoint to suggest resume improvements (verbs, keywords, achievements).
-    """
-    try:
-        suggestions = await AIService.optimize_resume_content(
-            payload.resume, 
-            payload.job_description
+        return success_response(
+            {"cover_letter": result},
+            "Cover letter generated successfully"
         )
-        return {
-            "status": "success",
-            "data": {
-                "improvements": suggestions
-            }
-        }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Optimization failed")
+        return error_response(str(e))
+    
+@router.post("/optimize-resume")
+async def optimize_resume_endpoint(request: OptimizeResumeRequest):
+    try:
+        improvements = await AIService.optimize_resume_content(
+            request.resume,
+            request.job_description
+        )
+
+        return success_response(
+            {"improvements": improvements},
+            "Resume optimization suggestions generated"
+        )
+
+    except Exception as e:
+        return error_response(str(e))

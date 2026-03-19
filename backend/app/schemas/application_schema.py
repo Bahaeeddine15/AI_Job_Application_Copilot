@@ -10,10 +10,10 @@ class AnalyzeRequest(BaseModel):
 class CoverLetterRequest(BaseModel):
     resume: str
     job_description: str
-    tone: str = "professional"  # Default value if not provided by the mobile app
+    #tone: str = "professional"  # Default value if not provided by the mobile app
 
 # 3. For the /optimize-resume endpoint
-class OptimizeRequest(BaseModel):
+class OptimizeResumeRequest(BaseModel):
     resume: str
     job_description: str
 
