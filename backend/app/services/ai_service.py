@@ -1,8 +1,8 @@
 from typing import List, Tuple
 from app.core.config import settings
-from google import genai
 import json
 import re
+from google import genai
 
 
 
