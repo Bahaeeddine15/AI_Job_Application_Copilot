@@ -6,16 +6,10 @@ from app.schemas.application_schema import (
 )
 # We import the service that will eventually hold your OpenAI logic
 from app.services.ai_service import AIService
+from app.services.application_service import ApplicationService
 from app.services.response_service import error_response, success_response 
 
 router = APIRouter(prefix="/api/application", tags=["Application"])
-
-
-"""@router.post("/analyze_resume")
-def analyze_resume(resume: str, job_description: str):
-    skills = extract_skills(resume)
-    score = similarity_score(resume, job_description)
-    return success_response({"skills": skills, "score": score})"""
 
 @router.post("/analyze")
 async def analyze_application(payload: AnalyzeRequest):
@@ -25,14 +19,11 @@ async def analyze_application(payload: AnalyzeRequest):
     """
     try:
         # The router 'delegates' the work to the service
-        analysis_data = await AIService.analyze_resume_vs_job(
+        analysis_data = await ApplicationService.analyze_resume(
             payload.resume, 
             payload.job_description
         )
-        return {
-            "status": "success",
-            "data": analysis_data
-        }
+        return success_response(data=analysis_data)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -50,7 +41,7 @@ async def generate_cover_letter_endpoint(request: CoverLetterRequest):
         )
 
     except Exception as e:
-        return error_response(str(e))
+        return error_response(message="AI service is temporarily unavailable. Please try again shortly.", code=503)
     
 @router.post("/optimize-resume")
 async def optimize_resume_endpoint(request: OptimizeResumeRequest):
@@ -66,4 +57,4 @@ async def optimize_resume_endpoint(request: OptimizeResumeRequest):
         )
 
     except Exception as e:
-        return error_response(str(e))
+        return error_response(message="AI service is temporarily unavailable. Please try again shortly.", code=503)

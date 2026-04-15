@@ -2,6 +2,9 @@ from typing import List, Tuple
 from app.core.config import settings
 import json
 import re
+import random
+import time
+import asyncio
 from google import genai
 
 
@@ -29,7 +32,7 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        text = cls._generate_text(prompt) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
+        text = await cls._generate_text(prompt) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
         return cls._extract_json_array(text) # we expect the model to return a text that contains a JSON array of keywords, we use the helper function _extract_json_array to parse that text and get the list of keywords as a python list
 
     @classmethod
@@ -48,7 +51,7 @@ class AIService:
                     Resume:
                     {resume}
                 """
-        text = cls._generate_text(prompt)
+        text = await cls._generate_text(prompt)
         return cls._extract_json_array(text)
 
     @classmethod
@@ -69,18 +72,18 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        text = cls._generate_text(prompt)
+        text = await cls._generate_text(prompt)
         return cls._extract_float(text)
 
     @classmethod
-    async def generate_cover_letter(cls, resume: str, job_description: str) -> str:
+    async def generate_cover_letter(cls, resume: str, job_description: str, tone:str) -> str:
         prompt = f"""
                     You are an AI assistant for job applications.
 
                     Write a professional, concise, tailored cover letter based on the resume and job description below.
 
                     Rules:
-                    - Professional tone
+                    - {tone} tone
                     - Clear and natural English
                     - 3 to 5 paragraphs
                     - No placeholders like [Company Name]
@@ -92,36 +95,8 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        return cls._generate_text(prompt)
+        return await cls._generate_text(prompt)
     
-# these two methods must be implemented correctlyy bcuz i don't know what are for'
-# """
-# @staticmethod
-# async def analyze_resume_vs_job(resume: str, job_description: str) -> dict:
-#     
-#    # Connects the internal logic to return the structure 
-#     #expected by the /application/analyze router.
-#     
-#     skills = extract_skills(resume)
-#     matched, missing = compare_skills(skills, job_description)
-#     score = similarity_score(resume, job_description)
-#     
-#     return {
-#         "match_score": int(score * 100), # Convert 0.78 to 78
-#         "matched_skills": matched,
-#         "missing_skills": missing
-#     }
-# 
-# 
-# @staticmethod
-# async def optimize_resume_content(resume: str, job_description: str) -> List[str]:
-#     # Mocking optimization suggestions
-#     return [
-#         "Use measurable achievements (e.g., 'Improved speed by 20%')",
-#         "Add missing keywords: Docker, AWS",
-#         "Quantify your results in the experience section"
-#     ]
-# """
  #helper functions for parsing Gemini responses
 
     @classmethod
@@ -146,7 +121,7 @@ class AIService:
                     {job_description}
                 """
 
-        text = cls._generate_text(prompt)
+        text = await cls._generate_text(prompt)
         return cls._extract_json_array(text)
 
     @staticmethod
@@ -195,24 +170,40 @@ class AIService:
             raise ValueError(f"Failed to parse similarity score: {str(e)}")
 
     @classmethod
-    def _generate_text(cls, prompt: str) -> str:
+    async def _generate_text(cls, prompt: str) -> str:
         """
-        Send prompt to Gemini and return clean text.
+        Send prompt to Gemini with retry for transient provider errors.
         """
-        try:
-            response = cls.client.models.generate_content(
-                model=cls.model_name,
-                contents=prompt
-            )# this is the api call to gemini, it send a prompt and expects a response object that contains the generated text in a property called "text"
+        max_attempts = 4
+        base_delay = 1.0
 
-            if not response or not getattr(response, "text", None): # check if we got a response (not empty) and if it has the text property (the scond condition)
-                raise ValueError("Empty or invalid response from Gemini.")
+        for attempt in range(1, max_attempts + 1):
+            try:
+                response = cls.client.models.generate_content(
+                    model=cls.model_name,
+                    contents=prompt
+                )
 
-            return response.text.strip()
+                if not response or not getattr(response, "text", None):
+                    raise ValueError("Empty or invalid response from Gemini.")
 
-        except Exception as e:
-            raise Exception(f"Gemini request failed: {str(e)}")
-        
+                return response.text.strip()
+
+            except Exception as e:
+                msg = str(e)
+                transient = ("503" in msg) or ("UNAVAILABLE" in msg)
+
+                if transient and attempt < max_attempts:
+                    sleep_s = base_delay * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
+                    # Use non-blocking sleep (or just continue; blocking is acceptable in sync context)
+                    # For now, use time.sleep as this is sync; in async context use asyncio.sleep
+                    time.sleep(sleep_s)
+                    continue
+
+                if transient:
+                    raise Exception("AI service is busy right now. Please retry in a few seconds.")
+
+                raise Exception(f"Gemini request failed: {msg}")
 
 # --- Internal Helper Functions (Keep these below the class) ---
 

@@ -11,18 +11,8 @@ router = APIRouter(
 def health():
     return success_response({"server": "running"})
 
-'''@router.get("/health")
-async def health_check():
-    return {
-        "status": "success",
-        "data": {
-            "server": "running"
-        }
-    }'''
-
-
 @router.get("/version")
-async def get_version():
+def get_version():
     return {
         "status": "success",
         "data": {
