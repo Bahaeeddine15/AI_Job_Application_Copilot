@@ -10,6 +10,7 @@ class Analyses(Base):
     match_score = Column(Float)
     matched_skills = Column(ARRAY(String))
     missing_skills = Column(ARRAY(String))
+    cover_letter = Column(String)
     created_at = Column(DateTime, nullable=False)
 
     def __repr__(self):
