@@ -1,6 +1,7 @@
 from typing import Dict
 from app.services.ai_service import AIService
-
+from app.services.file_service import FileService
+from app.models.Resume import Resume
 
 class ApplicationService:
 
@@ -19,3 +20,21 @@ class ApplicationService:
             "matched_skills": matched,
             "missing_skills": missing
         }
+
+    @staticmethod
+    async def upload_resume(file_bytes: bytes, user_id: int, db):
+
+        # Step 2 → extract text
+        text = FileService.extract_text_from_pdf(file_bytes)
+
+        # Step 3 → store in DB
+        resume = Resume(
+            user_id=user_id,
+            content=text
+        )
+
+        db.add(resume)
+        db.commit()
+        db.refresh(resume)
+
+        return resume
