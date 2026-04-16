@@ -10,5 +10,6 @@ psycopg2-binary>=2.9.0
 python-multipart
 pydantic[email]
 jose
-passlib[bcrypt]
+passlib
+bcrypt==3.2.0
 python-jose[cryptography]

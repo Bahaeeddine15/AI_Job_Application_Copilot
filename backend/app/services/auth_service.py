@@ -13,7 +13,7 @@ from app.models.Users import Users  # adapt import to your ORM model access
 # If you use an async DB session, adapt db access accordingly.
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -24,11 +24,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 def create_access_token(subject: str, expires_delta: Optional[timedelta] = None) -> str:
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode = {"sub": subject, "exp": expire}
-    return jwt.encode(to_encode, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return jwt.encode(to_encode, settings.JWT_SECRET_KEY.get_secret_value(), algorithm=settings.JWT_ALGORITHM)
 
 def decode_token(token: str) -> dict:
     try:
-        payload = jwt.decode(token, settings.JWT_SECRET_KEY, algorithms=[settings.JWT_ALGORITHM])
+        payload = jwt.decode(token, settings.JWT_SECRET_KEY.get_secret_value(), algorithms=[settings.JWT_ALGORITHM])
         return payload
     except JWTError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")

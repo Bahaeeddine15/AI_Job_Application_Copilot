@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
+from fastapi.security import OAuth2PasswordRequestForm
 from pydantic import BaseModel
 from datetime import timedelta
 from sqlalchemy.orm import Session
@@ -37,3 +38,31 @@ def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
         return JSONResponse(content=error_response("Invalid credentials", code=401), status_code=401)
     token = create_access_token(subject=payload.email, expires_delta=timedelta(minutes=60))
     return success_response(data={"access_token": token, "token_type": "bearer"})
+
+# in auth.py
+@router.post("/token")
+def token_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    user = Users.get_by_email(db, form_data.username)
+    if not user or not verify_password(form_data.password, user.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    token = create_access_token(subject=user.email)
+    return {"access_token": token, "token_type": "bearer"}
+
+# @router.post("/login")
+# def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+#     user = Users.get_by_email(db, form_data.username)  # username field will contain email
+#     if not user or not verify_password(form_data.password, user.hashed_password):
+#         raise HTTPException(
+#             status_code=status.HTTP_401_UNAUTHORIZED,
+#             detail="Incorrect username or password",
+#             headers={"WWW-Authenticate": "Bearer"},
+#         )
+
+#     token = create_access_token(
+#         subject=user.email,
+#     )
+#     return {"access_token": token, "token_type": "bearer"}

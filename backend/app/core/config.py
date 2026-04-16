@@ -1,19 +1,27 @@
-from pydantic_settings import BaseSettings
+from pathlib import Path
+
+from pydantic import Field, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
     app_name: str = "AI Job Copilot"
     version: str = "0.1.0"
     environment: str = "development"
-    GEMINI_API_KEY: str
-     # JWT settings
-    JWT_SECRET_KEY: str ="cac59cb3a72a467b5a91b632596a64108018d20b2da9c63045b032a9cb4607f3" # set in .env
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 1 day
+    GEMINI_API_KEY: SecretStr = Field(validation_alias="GEMINI_API_KEY")
+    # JWT settings
+    JWT_SECRET_KEY: SecretStr = Field(validation_alias="JWT_SECRET_KEY")
+    JWT_ALGORITHM: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(
+        default=60 * 24,
+        validation_alias="ACCESS_TOKEN_EXPIRE_MINUTES",
+    )
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=str(Path(__file__).resolve().parents[2] / ".env"),
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
 
 settings = Settings()

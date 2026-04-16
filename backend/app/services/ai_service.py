@@ -6,12 +6,13 @@ import random
 import time
 import asyncio
 from google import genai
+from google.genai import types
 
 
 
 class AIService:
     # Initialize the Gemini model once for the entire class to reuse across methods
-    client = genai.Client(api_key=settings.GEMINI_API_KEY)
+    client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
     model_name = "gemini-2.5-flash"
     
    
@@ -32,7 +33,11 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        text = await cls._generate_text(prompt) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
+        json_config = types.GenerateContentConfig(
+            temperature=0.0,
+            response_mime_type="application/json"
+        )
+        text = await cls._generate_text(prompt,config=json_config) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
         return cls._extract_json_array(text) # we expect the model to return a text that contains a JSON array of keywords, we use the helper function _extract_json_array to parse that text and get the list of keywords as a python list
 
     @classmethod
@@ -47,24 +52,39 @@ class AIService:
                     - No explanation
                     - No markdown
                     - Maximum 12 skills
+                    - Example output: ["FastAPI", "React", "Project Management"]
 
                     Resume:
                     {resume}
                 """
-        text = await cls._generate_text(prompt)
+        json_config = types.GenerateContentConfig(
+            temperature=0.0,
+            response_mime_type="application/json"
+        )
+        text = await cls._generate_text(prompt,config=json_config)
         return cls._extract_json_array(text)
 
     @classmethod
     async def similarity_score(cls, resume: str, job_description: str) -> float:
         prompt = f"""
-                    You are an AI assistant for resume-job matching.
+                    You are an expert ATS (Applicant Tracking System).
+                    Calculate the similarity score between the following resume and job description.
 
-                    Compare the following resume and job description.
+                    METHODOLOGY:
+                    1. Extract required skills from the Job Description.
+                    2. Count how many of those required skills strictly appear in the Resume.
+                    3. Base the score primarily on the ratio of required skills matched.
+                    4. Slightly adjust up for matching experience years and education.
+                    5. Do not hallucinate or assume skills. If a skill is not explicitly stated or clearly implied by a synonym, it is not a match.
 
-                    Rules:
-                    - Return ONLY one number between 0 and 1
-                    - No explanation
-                    - No extra text
+                    RULES:
+                    - Return ONLY a valid JSON object.
+                    - The JSON object must contain exactly one key: "score".
+                    - The value must be a numeric float between 0.0 and 1.0.
+                    - No explanation, no markdown blocks.
+
+                    Example Output:
+                    {{"score": 0.85}}
 
                     Resume:
                     {resume}
@@ -72,8 +92,20 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        text = await cls._generate_text(prompt)
-        return cls._extract_float(text)
+        strict_config = types.GenerateContentConfig(
+            temperature=0.0, 
+            response_mime_type="application/json"
+        )
+        text = await cls._generate_text(prompt,config=strict_config)
+        try:
+            data = json.loads(text)
+            score = float(data.get("score", 0.0))
+            if score < 0 or score > 1:
+                raise ValueError()
+            return score
+        except (ValueError, json.JSONDecodeError):
+            # Fallback to the old regex parsing if JSON fails
+            return cls._extract_float(text)
 
     @classmethod
     async def generate_cover_letter(cls, resume: str, job_description: str, tone:str) -> str:
@@ -95,7 +127,10 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        return await cls._generate_text(prompt)
+        text_config = types.GenerateContentConfig(
+            temperature=0.7, # Higher temperature allows for better, more natural writing
+        )
+        return await cls._generate_text(prompt,config=text_config)
     
  #helper functions for parsing Gemini responses
 
@@ -109,10 +144,12 @@ class AIService:
                     Return ONLY a JSON array of improvement suggestions.
 
                     Rules:
+                    - Return ONLY a valid JSON array of strings containing improvement suggestions.
                     - No explanation
                     - No markdown
                     - Maximum 6 suggestions
                     - Each suggestion must be short and actionable
+                    - Example output: ["Add more quantifiable metrics to your recent role", "Highlight AWS experience"]- Example output: ["Add more quantifiable metrics to your recent role", "Highlight AWS experience"]
 
                     Resume:
                     {resume}
@@ -120,8 +157,11 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-
-        text = await cls._generate_text(prompt)
+        json_config = types.GenerateContentConfig(
+            temperature=0.1,  # A tiny bit of temperature to allow for creative suggestions
+            response_mime_type="application/json"
+        )
+        text = await cls._generate_text(prompt,config=json_config)
         return cls._extract_json_array(text)
 
     @staticmethod
@@ -170,18 +210,24 @@ class AIService:
             raise ValueError(f"Failed to parse similarity score: {str(e)}")
 
     @classmethod
-    async def _generate_text(cls, prompt: str) -> str:
+    async def _generate_text(cls, prompt: str, config: types.GenerateContentConfig | None = None) -> str:
         """
         Send prompt to Gemini with retry for transient provider errors.
         """
         max_attempts = 4
         base_delay = 1.0
 
+        default_config = types.GenerateContentConfig(
+            temperature=0.0,
+            top_p=0.1,
+        )
+
         for attempt in range(1, max_attempts + 1):
             try:
                 response = cls.client.models.generate_content(
                     model=cls.model_name,
-                    contents=prompt
+                    contents=prompt,
+                    config=config or default_config
                 )
 
                 if not response or not getattr(response, "text", None):
@@ -197,7 +243,7 @@ class AIService:
                     sleep_s = base_delay * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
                     # Use non-blocking sleep (or just continue; blocking is acceptable in sync context)
                     # For now, use time.sleep as this is sync; in async context use asyncio.sleep
-                    time.sleep(sleep_s)
+                    await asyncio.sleep(sleep_s)
                     continue
 
                 if transient:

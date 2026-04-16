@@ -18,7 +18,7 @@ async def job_keywords(payload: JobKeywordsRequest):
 
 @router.post("/similarity-score")
 async def similarity_score(payload: SimilarityScoreRequest):
-    result = await ApplicationService.similarity_score(
+    result = await AIService.similarity_score(
         payload.resume,
         payload.job_description
     )
