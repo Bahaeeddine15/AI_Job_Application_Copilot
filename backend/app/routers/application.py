@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from app.services.auth_service import get_current_user
 from app.schemas.application_schema import (
     AnalyzeRequest, 
     CoverLetterRequest, 
@@ -9,7 +10,8 @@ from app.services.ai_service import AIService
 from app.services.application_service import ApplicationService
 from app.services.response_service import error_response, success_response 
 
-router = APIRouter(prefix="/api/application", tags=["Application"])
+router = APIRouter(prefix="/api/application", tags=["Application"], dependencies=[Depends(get_current_user)])
+
 
 @router.post("/analyze")
 async def analyze_application(payload: AnalyzeRequest):

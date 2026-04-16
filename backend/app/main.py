@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from app.routers import system, analysis, application, resume
+
+from app.routers import system, analysis, application, resume, auth
 from app.database.connection import init_db  # <-- Add this import
 
 app = FastAPI(title="AI Job Copilot API")
@@ -14,6 +15,7 @@ app.include_router(system.router)
 app.include_router(analysis.router)
 app.include_router(application.router)
 app.include_router(resume.router)
+app.include_router(auth.router) 
 
 @app.get("/")
 async def root():
