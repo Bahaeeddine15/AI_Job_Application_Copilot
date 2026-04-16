@@ -32,7 +32,8 @@ async def generate_cover_letter_endpoint(request: CoverLetterRequest):
     try:
         result = await AIService.generate_cover_letter(
             request.resume,
-            request.job_description
+            request.job_description,
+            request.tone
         )
 
         return success_response(
