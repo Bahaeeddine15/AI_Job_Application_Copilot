@@ -12,6 +12,7 @@ class Analyses(Base):
     missing_skills = Column(ARRAY(String))
     cover_letter = Column(String)
     created_at = Column(DateTime, nullable=False)
+    status=Column(String, nullable=False, default='pending')  # pending, completed, failed
 
     def __repr__(self):
         return f"<Analysis(id={self.id}, user_id={self.user_id}, resume_id={self.resume_id}, match_score={self.match_score})>"

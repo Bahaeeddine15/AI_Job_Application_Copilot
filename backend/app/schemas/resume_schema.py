@@ -22,3 +22,5 @@ class SummaryResponse(BaseModel):
         ...,
         description="AI-generated summary of the resume"
     )
+class ResumeTextCreate(BaseModel):
+    validated_text: str
