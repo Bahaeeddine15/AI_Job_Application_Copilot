@@ -5,11 +5,15 @@ import { Button, Card, Text, TextInput } from "react-native-paper";
 import * as DocumentPicker from "expo-document-picker";
 import { saveResumeText, uploadResume } from "../services/ResumeService";
 
+
+
+
 export default function UploadResumeScreen() {
   const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
   const [loading, setLoading] = useState(false);
   const [extractedText, setExtractedText] = useState("");
   const [saving, setSaving] = useState(false);
+
 
   const pickDocument = async () => {
     try {

@@ -1,12 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Text, TextInput } from "react-native-paper";
 import { submitJobDescription } from "../services/JobDescriptionService";
 
+
 export default function JobDescriptionScreen() {
   const [jobDescription, setJobDescription] = useState("");
   const [saving, setSaving] = useState(false);
+
+  
 
   const handleSubmit = async () => {
     if (!jobDescription.trim()) {

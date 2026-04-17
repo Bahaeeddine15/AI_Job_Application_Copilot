@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
 from requests import Session
 
+from app.services.auth_service import get_current_user
+from app.models.Users import Users
 from app.models.Resume import Resume
 from app.database.connection import get_db
 from app.schemas.resume_schema import ResumeRequest, SkillsResponse, SummaryResponse, ResumeTextCreate
@@ -59,10 +61,10 @@ async def upload_resume(file: UploadFile = File(...)):
     }
 #this endpoint is for saving the validated resume text to the database after extraction and any necessary cleaning. It assumes a user_id of 1 for now, but this should be replaced with the actual logged-in user's ID in a real application.
 @router.post("/save")
-async def save_resume_text(payload: ResumeTextCreate, db: Session = Depends(get_db)):
+async def save_resume_text(payload: ResumeTextCreate, db: Session = Depends(get_db), current_user: Users = Depends(get_current_user)):
     
     resume = Resume(
-        user_id=1,  # TEMP: replace later with real logged-in user
+        user_id=current_user.id,  #  real logged-in user
         content=payload.validated_text
     )
 

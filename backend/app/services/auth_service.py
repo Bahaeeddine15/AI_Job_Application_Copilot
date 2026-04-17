@@ -33,16 +33,16 @@ def decode_token(token: str) -> dict:
     except JWTError as e:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Could not validate credentials")
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    payload = decode_token(token)
-    username = payload.get("sub")
-    if username is None:
-        return JSONResponse(content=error_response("Invalid authentication credentials", code=401), status_code=401)
+#async def get_current_user(token: str = Depends(oauth2_scheme)):
+#   payload = decode_token(token)
+#   username = payload.get("sub")
+#    if username is None:
+ #       return JSONResponse(content=error_response("Invalid authentication credentials", code=401), status_code=401)
     # Lookup user in DB. Replace with your DB access – synchronous or async.
-    user = await Users.get_by_email(username)  # example helper, adapt to your Users model
-    if not user:
-        return JSONResponse(content=error_response("User not found", code=404), status_code=404)
-    return user
+#    user = await Users.get_by_email(username)  # example helper, adapt to your Users model
+#    if not user:
+#        return JSONResponse(content=error_response("User not found", code=404), status_code=404)
+#    return user
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     payload = decode_token(token)

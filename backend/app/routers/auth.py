@@ -1,3 +1,5 @@
+
+
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import JSONResponse
 from fastapi.security import OAuth2PasswordRequestForm
@@ -32,11 +34,12 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     return success_response(data={"message": "User registered successfully", "user_id": getattr(user, "id", None)})
 
 @router.post("/login", response_model=dict)
-def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
+async def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
     user = Users.get_by_email(db, payload.email)
     if not user or not verify_password(payload.password, user.hashed_password):
         return JSONResponse(content=error_response("Invalid credentials", code=401), status_code=401)
     token = create_access_token(subject=payload.email, expires_delta=timedelta(minutes=60))
+    
     return success_response(data={"access_token": token, "token_type": "bearer"})
 
 # in auth.py

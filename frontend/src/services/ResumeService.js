@@ -1,6 +1,6 @@
-import axios from "axios";
+import api from "./api";
 
-const BASE_URL = "http://192.168.18.47:8000"; 
+const BASE_URL = api.defaults.baseURL ||"http://192.168.18.47:8000"; 
 // Android emulator
 // If using a real phone, replace with your PC local IP:
 // const BASE_URL = "http://192.168.1.5:8000";
@@ -14,7 +14,7 @@ export const uploadResume = async (selectedFile) => {
     type: selectedFile.mimeType || "application/pdf",
   });
 
-  const response = await axios.post(`${BASE_URL}/api/resume/upload`, formData, {
+  const response = await api.post(`${BASE_URL}/api/resume/upload`, formData, {
     headers: {
       "Content-Type": "multipart/form-data",
     },
@@ -22,10 +22,11 @@ export const uploadResume = async (selectedFile) => {
 
   return response.data;
 };
-export const saveResumeText = async ( validatedText) => {
-  const response = await axios.post(`${BASE_URL}/api/resume/save`, {
+
+
+export const saveResumeText = async (validatedText) => {
+  const response = await api.post("/api/resume/save", {
     validated_text: validatedText,
   });
-
   return response.data;
 };

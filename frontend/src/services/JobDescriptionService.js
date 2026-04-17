@@ -1,4 +1,4 @@
-import axios from "axios";
+import api from "./api";
 
 const BASE_URL = "http://192.168.18.47:8000"; 
 // Android emulator
@@ -6,7 +6,7 @@ const BASE_URL = "http://192.168.18.47:8000";
 // const BASE_URL = "http://192.168.1.5:8000";
 
 export const submitJobDescription = async (jobDescription) => {
-  const response = await axios.post(`${BASE_URL}/api/analysis/job-description/submit`, {
+  const response = await api.post(`${BASE_URL}/api/analysis/job-description/submit`, {
     job_description: jobDescription,
   });
   return response.data;
