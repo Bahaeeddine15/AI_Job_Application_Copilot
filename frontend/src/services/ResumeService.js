@@ -1,24 +1,25 @@
 import api from "./api";
+import { Platform } from "react-native";
 
-const BASE_URL = api.defaults.baseURL ||"http://192.168.18.47:8000"; 
-// Android emulator
-// If using a real phone, replace with your PC local IP:
-// const BASE_URL = "http://192.168.1.5:8000";
+const BASE_URL = api.defaults.baseURL; 
+
 
 export const uploadResume = async (selectedFile) => {
   const formData = new FormData();
+  console.log(formData);
+console.log(selectedFile);
 
-  formData.append("file", {
-    uri: selectedFile.uri,
-    name: selectedFile.name,
-    type: selectedFile.mimeType || "application/pdf",
-  });
+  if (Platform.OS === "web") {
+    formData.append("file", selectedFile.file);
+  } else {
+    formData.append("file", {
+      uri: selectedFile.uri,
+      name: selectedFile.name,
+      type: selectedFile.mimeType || "application/pdf",
+    });
+  }
 
-  const response = await api.post(`${BASE_URL}/api/resume/upload`, formData, {
-    headers: {
-      "Content-Type": "multipart/form-data",
-    },
-  });
+  const response = await api.post(`${BASE_URL}/api/resume/upload`, formData);
 
   return response.data;
 };

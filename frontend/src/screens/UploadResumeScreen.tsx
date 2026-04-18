@@ -135,6 +135,11 @@ const handleSave = async () => {
                         textAlignVertical="top"
                         placeholder="Extracted text will appear here..."
                         placeholderTextColor="#A98062"
+                        
+                        outlineColor="#D9A883"
+                        activeOutlineColor="#623528"
+                        textColor="#343434"
+                      
                         />
                     </View>
                     ) : null}
@@ -218,6 +223,9 @@ const styles = StyleSheet.create({
     color: "#050404",
     fontSize: 14,
     lineHeight: 22,
+    marginTop: 18,
+    marginBottom: 18,
+    
   },
 
   fileBox: {

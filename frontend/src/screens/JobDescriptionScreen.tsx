@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState} from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Text, TextInput } from "react-native-paper";
@@ -13,7 +13,7 @@ export default function JobDescriptionScreen() {
 
   const handleSubmit = async () => {
     if (!jobDescription.trim()) {
-        console.log("No text to save");
+        console.log("No text to submit");
         return;
       }
     
@@ -48,11 +48,14 @@ export default function JobDescriptionScreen() {
                     <Text style={styles.cardText}>
                     This will help us analyze the key requirements and tailor your application.
                     </Text>
-                    <View > 
+                    <View style={styles.textEditorContainer}> 
                       <TextInput
                       style={styles.textEditor}
                       placeholder="Paste the job description here..."
                       placeholderTextColor="#A98062"
+                      outlineColor="#D9A883"
+                      activeOutlineColor="#623528"
+                      textColor="#343434"
                       multiline
                       textAlignVertical="top"
                       value={jobDescription}
@@ -65,7 +68,8 @@ export default function JobDescriptionScreen() {
                     style={styles.button}
                     textColor="#D9A883"
                     onPress={handleSubmit}>
-                    Submit
+                    {saving ? "Submitting..." : "Submit Job Description"}
+                   
                     </Button>
                 </Card.Content>
                 </Card>
@@ -122,18 +126,23 @@ const styles = StyleSheet.create({
       marginTop: 12,
     
   },
-  
-  textEditor: {
+   textEditorContainer: {
     marginTop: 18,
     marginBottom: 18,
-    minHeight: 220,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D9A883",
-    borderRadius: 12,
-    padding: 14,
-    fontSize: 14,
-    lineHeight: 22,
   },
+  textEditor: {
+  minHeight: 220,
+  backgroundColor: "#FFFFFF",
+  borderWidth: 1,
+  borderColor: "#D9A883",
+  borderRadius: 12,
+  padding: 14,
+  color: "#050404",
+  fontSize: 14,
+  lineHeight: 22,
+  marginTop: 18,
+  marginBottom: 18,
+},
+  
 
 });

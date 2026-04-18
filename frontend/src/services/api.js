@@ -4,9 +4,10 @@ import { Platform } from "react-native";
 // Adapte selon plateforme
 const API_URL =
   Platform.OS === "android"
-    ? "http://10.0.2.2:8000" // Android emulator
+  
+    ? "http://ur_ip:8000" // Android 
     : Platform.OS === "ios"
-    ? "http://votreip:8000" // iPhone physique (IP de ton PC)
+    ? "http://ur_ip:8000" // iPhone physique (IP de ton PC)
     : "http://127.0.0.1:8000"; // Web local
 
 const api = axios.create({ baseURL: API_URL });

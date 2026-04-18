@@ -9,5 +9,4 @@ class SimilarityScoreRequest(BaseModel):
     resume: str
     job_description: str
 class JobDescriptionCreate(BaseModel):
-    resume_id: int
     job_description: str

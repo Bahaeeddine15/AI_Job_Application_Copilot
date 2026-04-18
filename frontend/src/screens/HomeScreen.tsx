@@ -35,6 +35,7 @@ export default function HomeScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView
+        style={{ flex: 1 }}
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
@@ -108,6 +109,8 @@ const styles = StyleSheet.create({
   content: {
     padding: 24,
     paddingBottom: 48,
+    flexGrow: 1,
+    minHeight: "100%",
   },
 
   welcomeSection: {
@@ -226,11 +229,11 @@ const styles = StyleSheet.create({
     color: "#623528",
     lineHeight: 20,
   },
-  cardIcon: {
-  marginBottom: 12,
-},
+  
 cardIconContainer: {
   flexDirection: "row",
+  alignItems: "center",
+  gap: 10,
   
   },
 });

@@ -57,6 +57,11 @@ function AppHeader({ navigation }) {
           title="Settings"
           titleStyle={styles.menuItem}
         />
+        <Menu.Item
+          onPress={() => { setMenuVisible(false); navigation.navigate("JobDescription"); }}
+          title="Job Description"
+          titleStyle={styles.menuItem}
+        />
       </Menu>
     </View>
   );
