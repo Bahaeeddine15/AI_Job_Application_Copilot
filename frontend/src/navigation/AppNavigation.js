@@ -11,6 +11,9 @@ import JobDescriptionScreen from "../screens/JobDescriptionScreen";
 
 import HomeScreen from "../screens/HomeScreen";
 
+import LoginScreen from "../screens/LoginScreen";
+import RegisterScreen from "../screens/RegisterScreen";
+
 const Stack = createStackNavigator();
 
 function AppHeader({ navigation }) {
@@ -60,14 +63,24 @@ function AppHeader({ navigation }) {
 }
 
 export default function AppNavigator() {
+  const screenOptions = ({ navigation, route }) => ({
+    header: () => {
+      // N'affiche le header que si on n'est pas sur Login ou Register
+      if (route.name === "Login" || route.name === "Register") {
+        return null;
+      }
+      return <AppHeader navigation={navigation} />;
+    },
+  });
+
   return (
     <NavigationContainer>
       <Stack.Navigator
-        initialRouteName="Home"
-        screenOptions={({ navigation }) => ({
-          header: () => <AppHeader navigation={navigation} />,
-        })}
+        initialRouteName="Login"
+        screenOptions={screenOptions}
       >
+        <Stack.Screen name="Login" component={LoginScreen} />
+        <Stack.Screen name="Register" component={RegisterScreen} /> 
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />

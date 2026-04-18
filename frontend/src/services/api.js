@@ -1,12 +1,34 @@
 import axios from "axios";
-import * as SecureStore from "expo-secure-store";
+import { Platform } from "react-native";
 
-const api = axios.create({ baseURL: "http://192.168.18.47:8000" });
+// Adapte selon plateforme
+const API_URL =
+  Platform.OS === "android"
+    ? "http://10.0.2.2:8000" // Android emulator
+    : Platform.OS === "ios"
+    ? "http://votreip:8000" // iPhone physique (IP de ton PC)
+    : "http://127.0.0.1:8000"; // Web local
+
+const api = axios.create({ baseURL: API_URL });
+
+// Charge SecureStore seulement sur mobile
+const SecureStore = Platform.OS === "web" ? null : require("expo-secure-store");
+
+const getToken = async () => {
+  if (Platform.OS === "web") {
+    return window.localStorage.getItem("access_token");
+  }
+  return SecureStore.getItemAsync("access_token");
+};
 
 api.interceptors.request.use(
   async (config) => {
-    const token = await SecureStore.getItemAsync("access_token");
-    if (token) config.headers.Authorization = `Bearer ${token}`;
+    try {
+      const token = await getToken();
+      if (token) {
+        config.headers.Authorization = "Bearer " + token;
+      }
+    } catch (e) {}
     return config;
   },
   (error) => Promise.reject(error)
