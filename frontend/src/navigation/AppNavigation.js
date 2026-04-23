@@ -8,6 +8,8 @@ import SettingsScreen from "../screens/SettingsScreen";
 import AnalyseResumeScreen from "../screens/AnalyseResumeScreen";
 import UploadResumeScreen from "../screens/UploadResumeScreen";
 import JobDescriptionScreen from "../screens/JobDescriptionScreen";
+import ResultsScreen from "../screens/ResultsScreen";
+
 
 import HomeScreen from "../screens/HomeScreen";
 
@@ -90,6 +92,7 @@ export default function AppNavigator() {
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
         <Stack.Screen name="AnalyzeResume" component={AnalyseResumeScreen} />
+        <Stack.Screen name="Results" component={ResultsScreen} />
         <Stack.Screen name="UploadResume" component={UploadResumeScreen} />
         <Stack.Screen name="JobDescription" component={JobDescriptionScreen} />
       </Stack.Navigator>

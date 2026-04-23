@@ -13,6 +13,34 @@ from app.services.ai_service import AIService
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
+@router.get("/latest")
+async def get_latest_resume(
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user)
+):
+    latest_resume = (
+        db.query(Resume)
+        .filter(Resume.user_id == current_user.id)
+        .order_by(Resume.created_at.desc())
+        .first()
+    )
+
+    if not latest_resume:
+        return {
+            "status": "success",
+            "data": None,
+            "message": "No resume found"
+        }
+
+    return {
+        "status": "success",
+        "data": {
+            "id": latest_resume.id,
+            "content": latest_resume.content,
+            "created_at": latest_resume.created_at
+        }
+    }
+
 @router.post("/extract-skills", response_model=dict) # You can even use your response schemas here
 async def extract_skills(payload: ResumeRequest):
     try:
@@ -23,6 +51,7 @@ async def extract_skills(payload: ResumeRequest):
     except Exception as e:
         # Catch errors if Gemini fails (like rate limits or parsing errors)
         raise HTTPException(status_code=500, detail=str(e))
+    
 
 # @router.post("/upload")
 # async def upload_resume(

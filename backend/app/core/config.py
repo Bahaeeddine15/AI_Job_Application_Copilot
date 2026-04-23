@@ -9,7 +9,9 @@ class Settings(BaseSettings):
     version: str = "0.1.0"
     environment: str = "development"
     
-    GEMINI_API_KEY: SecretStr = Field(validation_alias="GEMINI_API_KEY")
+    #GEMINI_API_KEY: SecretStr = Field(validation_alias="GEMINI_API_KEY")
+    GROQ_API_KEY:SecretStr = Field(validation_alias="GROQ_API_KEY")
+    GROQ_MODEL:str=Field(default="llama-3.3-70b-versatile", validation_alias="GROQ_MODEL")
     # JWT settings
     JWT_SECRET_KEY: SecretStr = Field(validation_alias="JWT_SECRET_KEY")
     JWT_ALGORITHM: str = Field(default="HS256", validation_alias="JWT_ALGORITHM")
