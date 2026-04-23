@@ -7,13 +7,16 @@ import time
 import asyncio
 from google import genai
 from google.genai import types
-
+from groq import AsyncGroq
+from typing import Any, Dict, Optional
 
 
 class AIService:
     # Initialize the Gemini model once for the entire class to reuse across methods
-    client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
-    model_name = "gemini-2.5-flash"
+    # client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
+    # model_name = "gemini-2.5-flash"
+    client = AsyncGroq(api_key=settings.GROQ_API_KEY.get_secret_value())
+    model_name = settings.GROQ_MODEL
     
    
     @classmethod
@@ -33,22 +36,18 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        json_config = types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json"
-        )
-        text = await cls._generate_text(prompt,config=json_config) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
+        text = await cls._generate_text(prompt,temperature=0.0) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
         return cls._extract_json_array(text) # we expect the model to return a text that contains a JSON array of keywords, we use the helper function _extract_json_array to parse that text and get the list of keywords as a python list
 
     @classmethod
     async def extract_skills(cls, resume: str) -> List[str]:
-        prompt = f"""
+     prompt = f"""
                     You are an AI assistant for resume analysis.
 
                     Extract the main technical and professional skills from the following resume.
 
                     Rules:
-                    - Return ONLY a valid JSON array
+                    - Return ONLY a valid JSON array of strings
                     - No explanation
                     - No markdown
                     - Maximum 12 skills
@@ -57,13 +56,13 @@ class AIService:
                     Resume:
                     {resume}
                 """
-        json_config = types.GenerateContentConfig(
-            temperature=0.0,
-            response_mime_type="application/json"
-        )
-        text = await cls._generate_text(prompt,config=json_config)
-        return cls._extract_json_array(text)
+     text = await cls._generate_text(
+        prompt,
+        temperature=0.0,
+        response_format=None,
+    )
 
+     return cls._extract_json_array(text)
     @classmethod
     async def similarity_score(cls, resume: str, job_description: str) -> float:
         prompt = f"""
@@ -82,9 +81,8 @@ class AIService:
                     - The JSON object must contain exactly one key: "score".
                     - The value must be a numeric float between 0.0 and 1.0.
                     - No explanation, no markdown blocks.
-
-                    Example Output:
-                    {{"score": 0.85}}
+                    - Prefer this exact schema: {{"score": 0.85}}
+                    - score should represent match ratio where 1.0 = 100%
 
                     Resume:
                     {resume}
@@ -92,20 +90,40 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        strict_config = types.GenerateContentConfig(
-            temperature=0.0, 
-            response_mime_type="application/json"
-        )
-        text = await cls._generate_text(prompt,config=strict_config)
+        text = await cls._generate_text(prompt,temperature=0.0, response_format={"type": "json_object"})
         try:
             data = json.loads(text)
-            score = float(data.get("score", 0.0))
+            raw_score = data.get("score", None)
+
+            if raw_score is None:
+                raise ValueError(f"Missing 'score' key in response: {text}")
+
+            # Handle numeric and string values: "0.85", "85", "85%", "0,85"
+            if isinstance(raw_score, str):
+                cleaned = raw_score.strip().replace("%", "").replace(",", ".")
+                score = float(cleaned)
+                if "%" in raw_score:
+                    score = score / 100.0
+            else:
+                score = float(raw_score)
+
+            # Normalize 0-100 into 0-1 if needed
+            if score > 1.0 and score <= 100.0:
+                score = score / 100.0
+
             if score < 0 or score > 1:
-                raise ValueError()
+                raise ValueError(f"Score out of range after normalization: {score}")
+
             return score
+
         except (ValueError, json.JSONDecodeError):
-            # Fallback to the old regex parsing if JSON fails
-            return cls._extract_float(text)
+            # Fallback parser (still validate/normalize)
+            score = cls._extract_float(text)
+            if score > 1.0 and score <= 100.0:
+                score = score / 100.0
+            if score < 0 or score > 1:
+                raise ValueError(f"Could not parse valid score from response: {text}")
+            return score
 
     @classmethod
     async def generate_cover_letter(cls, resume: str, job_description: str, tone:str) -> str:
@@ -127,10 +145,7 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        text_config = types.GenerateContentConfig(
-            temperature=0.7, # Higher temperature allows for better, more natural writing
-        )
-        return await cls._generate_text(prompt,config=text_config)
+        return await cls._generate_text(prompt,temperature=0.7)
     
  #helper functions for parsing Gemini responses
 
@@ -157,11 +172,7 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        json_config = types.GenerateContentConfig(
-            temperature=0.1,  # A tiny bit of temperature to allow for creative suggestions
-            response_mime_type="application/json"
-        )
-        text = await cls._generate_text(prompt,config=json_config)
+        text = await cls._generate_text(prompt,temperature=0.1)
         return cls._extract_json_array(text)
 
     @staticmethod
@@ -210,46 +221,67 @@ class AIService:
             raise ValueError(f"Failed to parse similarity score: {str(e)}")
 
     @classmethod
-    async def _generate_text(cls, prompt: str, config: types.GenerateContentConfig | None = None) -> str:
+    async def _generate_text(
+        cls,
+        prompt: str,
+        *,
+        temperature: float = 0.0,
+        response_format: Optional[Dict[str, Any]] = None,
+        max_attempts: int = 5,
+    ) -> str:
         """
-        Send prompt to Gemini with retry for transient provider errors.
+        Send prompt to Groq with retries for rate limits/transient outages.
         """
-        max_attempts = 4
         base_delay = 1.0
-
-        default_config = types.GenerateContentConfig(
-            temperature=0.0,
-            top_p=0.1,
-        )
 
         for attempt in range(1, max_attempts + 1):
             try:
-                response = cls.client.models.generate_content(
+                response = await cls.client.chat.completions.create(
                     model=cls.model_name,
-                    contents=prompt,
-                    config=config or default_config
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=temperature,
+                    response_format=response_format,  # e.g. {"type": "json_object"}
                 )
 
-                if not response or not getattr(response, "text", None):
-                    raise ValueError("Empty or invalid response from Gemini.")
-
-                return response.text.strip()
+                text = (response.choices[0].message.content or "").strip()
+                if not text:
+                    raise ValueError("Empty response from Groq.")
+                return text
 
             except Exception as e:
                 msg = str(e)
-                transient = ("503" in msg) or ("UNAVAILABLE" in msg)
 
-                if transient and attempt < max_attempts:
-                    sleep_s = base_delay * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
-                    # Use non-blocking sleep (or just continue; blocking is acceptable in sync context)
-                    # For now, use time.sleep as this is sync; in async context use asyncio.sleep
-                    await asyncio.sleep(sleep_s)
+                # Groq retryable classes: 429/rate-limit/quota + transient 5xx/service unavailable
+                retryable = any(token in msg.upper() for token in [
+                    "429",
+                    "RATE LIMIT",
+                    "RESOURCE_EXHAUSTED",
+                    "QUOTA",
+                    "503",
+                    "502",
+                    "504",
+                    "UNAVAILABLE",
+                    "TIMEOUT",
+                ])
+
+                if retryable and attempt < max_attempts:
+                    # honor provider hint if present: "Please retry in 10.7s"
+                    retry_after = None
+                    m = re.search(r"retry in\s+([0-9]+(?:\.[0-9]+)?)s", msg, re.IGNORECASE)
+                    if m:
+                        retry_after = float(m.group(1))
+
+                    delay = retry_after if retry_after is not None else (
+                        base_delay * (2 ** (attempt - 1)) + random.uniform(0, 0.5)
+                    )
+                    await asyncio.sleep(delay)
                     continue
 
-                if transient:
-                    raise Exception("AI service is busy right now. Please retry in a few seconds.")
+                # preserve semantic status in error text for router mapping
+                if "429" in msg or "RESOURCE_EXHAUSTED" in msg or "RATE LIMIT" in msg.upper():
+                    raise Exception(f"PROVIDER_429: {msg}")
 
-                raise Exception(f"Gemini request failed: {msg}")
+                raise Exception(f"PROVIDER_ERROR: {msg}")
 
 # --- Internal Helper Functions (Keep these below the class) ---
 
