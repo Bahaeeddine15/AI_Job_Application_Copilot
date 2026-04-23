@@ -5,7 +5,7 @@ import { Platform } from "react-native";
 const API_URL =
   Platform.OS === "android"
   
-    ? "http://ur_ip:8000" // Android 
+    ? "http://192.168.100.6:8000" // Android 
     : Platform.OS === "ios"
     ? "http://ur_ip:8000" // iPhone physique (IP de ton PC)
     : "http://127.0.0.1:8000"; // Web local
@@ -29,7 +29,9 @@ api.interceptors.request.use(
       if (token) {
         config.headers.Authorization = "Bearer " + token;
       }
-    } catch (e) {}
+    } catch (e) {
+      return Promise.reject(e);
+    }
     return config;
   },
   (error) => Promise.reject(error)
