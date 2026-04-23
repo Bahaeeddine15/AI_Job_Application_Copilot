@@ -23,7 +23,7 @@ async def get_latest_job_description(
     latest_analysis = (
         db.query(Analyses)
         .filter(Analyses.user_id == current_user.id)
-        .order_by(Analyses.created_at.desc(), Analyses.id.desc())
+        .order_by(Analyses.id.desc())
         .first()
     )
 

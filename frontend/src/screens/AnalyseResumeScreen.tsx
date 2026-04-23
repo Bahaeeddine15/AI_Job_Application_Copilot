@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect } from "@react-navigation/native";
 import { Button, Card, Text } from "react-native-paper";
 import {
   getLatestResume,
@@ -23,38 +24,52 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
   const [error, setError] = useState("");
   const [analysisId, setAnalysisId] = useState<number | null>(null);
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        setLoadingData(true);
-        setError("");
+  useFocusEffect(
+    useCallback(() => {
+      let isActive = true;
 
-        const [resumeData, jobData] = await Promise.all([
-          getLatestResume(),
-          getLatestJobDescription(),
-        ]);
+      const loadData = async () => {
+        try {
+          setLoadingData(true);
+          setError("");
 
-        setResumeText(resumeData?.content || "");
-        setJobDescription(jobData?.job_description || "");
-        setAnalysisId(jobData?.id ?? null);
+          const [resumeData, jobData] = await Promise.all([
+            getLatestResume(),
+            getLatestJobDescription(),
+          ]);
 
-        if (!resumeData?.content || !jobData?.job_description) {
-          setError("Missing data. Please save resume and job description first.");
+          if (!isActive) return;
+
+          setResumeText(resumeData?.content || "");
+          setJobDescription(jobData?.job_description || "");
+          setAnalysisId(jobData?.id ?? null);
+
+          if (!resumeData?.content || !jobData?.job_description) {
+            setError("Missing data. Please save resume and job description first.");
+          }
+        } catch (e: unknown) {
+          if (!isActive) return;
+          const err = e as {
+            response?: { data?: { message?: string } };
+            message?: string;
+          };
+          setError(
+            err?.response?.data?.message ||
+              err?.message ||
+              "Failed to load data from database."
+          );
+        } finally {
+          if (isActive) setLoadingData(false);
         }
-      } catch (e: unknown) {
-        const err = e as { response?: { data?: { message?: string } }; message?: string };
-        setError(
-          err?.response?.data?.message ||
-          err?.message ||
-          "Failed to load data from database."
-        );
-      } finally {
-        setLoadingData(false);
-      }
-    };
+      };
 
-    loadData();
-  }, []);
+      loadData();
+
+      return () => {
+        isActive = false;
+      };
+    }, [])
+  );
 
   const handleAnalyze = async () => {
     if (!resumeText.trim() || !jobDescription.trim()) {
@@ -91,7 +106,9 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
       });
     } catch (e: unknown) {
       const err = e as { response?: { data?: { message?: string } }; message?: string };
-      setError(err?.response?.data?.message || err?.message || "Analysis failed. Please try again.");
+      setError(
+        err?.response?.data?.message || err?.message || "Analysis failed. Please try again."
+      );
       console.error(err);
     } finally {
       setLoadingAnalyze(false);
@@ -133,8 +150,8 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
                 {loadingData
                   ? "Loading data..."
                   : loadingAnalyze
-                    ? "Analyzing..."
-                    : "Generate Results"}
+                  ? "Analyzing..."
+                  : "Generate Results"}
               </Button>
             </Card.Content>
           </Card>

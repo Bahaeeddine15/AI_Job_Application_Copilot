@@ -31,7 +31,6 @@ class AIService:
                     - No explanation
                     - No markdown
                     - Keep keywords short and relevant
-                    - Maximum 10 keywords
 
                     Job Description:
                     {job_description}
@@ -44,14 +43,13 @@ class AIService:
      prompt = f"""
                     You are an AI assistant for resume analysis.
 
-                    Extract the main technical and professional skills from the following resume.
+                    Extract the main technical and professional skills and the most important job keywords from the following resume.
 
                     Rules:
                     - Return ONLY a valid JSON array of strings
                     - No explanation
                     - No markdown
-                    - Maximum 12 skills
-                    - Example output: ["FastAPI", "React", "Project Management"]
+                    - Example output: ["FastAPI", "React", "Project Management", "Linux"]
 
                     Resume:
                     {resume}

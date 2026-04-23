@@ -6,7 +6,14 @@ export const getLatestResume = async () => {
 };
 
 export const getLatestJobDescription = async () => {
-  const response = await api.get("/api/analysis/latest-job-description");
+  const response = await api.get("/api/analysis/latest-job-description", {
+    params: { t: Date.now() }, // cache-buster
+    headers: {
+      "Cache-Control": "no-cache",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
   return response.data?.data;
 };
 
