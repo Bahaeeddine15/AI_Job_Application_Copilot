@@ -1,250 +1,191 @@
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { Button, Card, Text, TextInput } from "react-native-paper";
-import * as DocumentPicker from "expo-document-picker";
-import { saveResumeText, uploadResume } from "../services/ResumeService";
+import { Button, Text } from "react-native-paper";
+import { ResumeWizardProvider, useResumeWizard } from "../context/ResumeWizardContext";
+import StepIndicator from "../components/resume-wizard/StepIndicator";
+import PersonalStep from "../components/resume-wizard/PersonalStep";
+import EducationStep from "../components/resume-wizard/EducationStep";
+import ExperienceStep from "../components/resume-wizard/ExperienceStep";
+import ProjectsStep from "../components/resume-wizard/ProjectsStep";
+import SkillsStep from "../components/resume-wizard/SkillsStep";
+import OptionalStep from "../components/resume-wizard/OptionalStep";
+import { styles } from "../components/resume-wizard/wizardStyles";
+import { ResumeFormState } from "../types/resume";
+import { buildResumeSavePayload } from "../utils/resumePayload";
+import { saveResume } from "../services/ResumeService";
+import { updateUserProfile } from "../services/AuthService";
 
+function isFilled(value: string) {
+  return value.trim().length > 0;
+}
 
+function allObjectFieldsFilled(items: Array<Record<string, string>>) {
+  if (items.length === 0) return false;
+  return items.every((item) => Object.values(item).every((value) => isFilled(value)));
+}
 
+function allStringsFilled(items: string[]) {
+  if (items.length === 0) return false;
+  return items.every((value) => isFilled(value));
+}
 
-export default function UploadResumeScreen() {
-  const [selectedFile, setSelectedFile] = useState<DocumentPicker.DocumentPickerAsset | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [extractedText, setExtractedText] = useState("");
+function allProjectsFilled(items: Array<{ title: string; description: string; technologies: string }>) {
+  if (items.length === 0) return true;
+  const hasAnyData = items.some(
+    (p) => isFilled(p.title) || isFilled(p.description) || isFilled(p.technologies)
+  );
+  if (!hasAnyData) return true;
+  return items.every(
+    (p) => isFilled(p.title) && isFilled(p.description) && isFilled(p.technologies)
+  );
+}
+
+function isStepValid(step: number, form: ResumeFormState) {
+  if (step === 0) {
+    return (
+      isFilled(form.professional_email) &&
+      isFilled(form.phone_number) &&
+      isFilled(form.linkedin_url)
+    );
+  }
+
+  if (step === 1) return allObjectFieldsFilled(form.education as Array<Record<string, string>>);
+  if (step === 2) return allObjectFieldsFilled(form.experience as Array<Record<string, string>>);
+
+  if (step === 3) {
+    return allProjectsFilled(form.personal_projects) && allProjectsFilled(form.academic_projects);
+  }
+
+  if (step === 4) {
+    const languagesOk = allObjectFieldsFilled(form.languages as Array<Record<string, string>>);
+    const hardOk = allStringsFilled(form.hard_skills);
+    const softOk = allStringsFilled(form.soft_skills);
+    return languagesOk && hardOk && softOk;
+  }
+
+  return true; // optional page
+}
+
+function WizardContent() {
+  const { step, nextStep, previousStep, form } = useResumeWizard();
+  const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [success, setSuccess] = useState("");
 
+  const handleNext = () => {
+    if (!isStepValid(step, form)) {
+      setError("Please complete all required fields on this step before continuing.");
+      return;
+    }
+    setError("");
+    setSuccess("");
+    nextStep();
+  };
 
-  const pickDocument = async () => {
+  const handleSave = async () => {
     try {
-      const result = await DocumentPicker.getDocumentAsync({
-        type: [
-          "application/pdf",
-          "application/msword",
-          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        ],
-        copyToCacheDirectory: true,
-        multiple: false,
-      });
+      setSaving(true);
+      setError("");
+      setSuccess("");
 
-      if (!result.canceled) {
-        setSelectedFile(result.assets[0]);
-        console.log(result.assets[0]);
+      if (!isStepValid(0, form) || !isStepValid(1, form) || !isStepValid(2, form) || !isStepValid(4, form)) {
+        setError("Please complete all required fields before saving.");
+        return;
       }
-    } catch (error) {
-      console.log("Document picker error:", error);
+
+      const profilePayload = {
+        professional_email: form.professional_email,
+        phone_number: form.phone_number,
+        linkedin_url: form.linkedin_url,
+        country: form.country,
+        city: form.city,
+      };
+
+      const resumePayload = buildResumeSavePayload(form);
+
+      await Promise.all([
+        updateUserProfile(profilePayload),
+        saveResume(resumePayload),
+      ]);
+
+      setSuccess("Resume saved successfully.");
+    } catch (e: any) {
+      setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to save resume.");
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleUpload = async () => {
-  if (!selectedFile) {
-    console.log("No file selected");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const data = await uploadResume(selectedFile);
-
-    console.log("Upload success:", data);
-
-    setExtractedText(data.data.extracted_text);
-  } catch (error) {
-    console.log("Upload error:", error.response?.data || error.message);
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleSave = async () => {
-  if (!extractedText.trim()) {
-    console.log("No text to save");
-    return;
-  }
-
-  try {
-    setSaving(true);
-
-    const data = await saveResumeText( extractedText);
-    
-
-    console.log("Save success:", data);
-  } catch (error) {
-    console.log("Save error:", error);
-  } finally {
-    setSaving(false);
-  }
-};
+  const renderStep = () => {
+    if (step === 0) return <PersonalStep />;
+    if (step === 1) return <EducationStep />;
+    if (step === 2) return <ExperienceStep />;
+    if (step === 3) return <ProjectsStep />;
+    if (step === 4) return <SkillsStep />;
+    return <OptionalStep />;
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
-        <ScrollView
-                
-                showsVerticalScrollIndicator={false}
-        >
-            <View style={styles.content}>
-                <Text style={styles.title}>Upload Resume</Text>
-                <Text style={styles.subtitle}>
-                Select your CV in PDF or Word format.
-                </Text>
+      <ScrollView showsVerticalScrollIndicator={false}>
+        <View style={styles.content}>
+          <Text style={styles.title}>My Structured Resume</Text>
+          <Text style={styles.subtitle}>
+            Complete each step and move forward without losing your data.
+          </Text>
 
-                <Card style={styles.card}>
-                <Card.Content>
-                    <Text style={styles.cardTitle}>Choose your file</Text>
-                    <Text style={styles.cardText}>
-                    Supported formats: PDF, DOC, DOCX
-                    </Text>
+          <StepIndicator />
+          {renderStep()}
 
-                    <Button
-                    mode="contained"
-                    onPress={pickDocument}
-                    style={styles.button}
-                    textColor="#D9A883"
-                    >
-                    Choose File
-                    </Button>
+          {error ? <Text style={styles.errorText}>{error}</Text> : null}
+          {success ? <Text style={styles.successText}>{success}</Text> : null}
 
-                    {selectedFile && (
-                    <View style={styles.fileBox}>
-                        <Text style={styles.fileLabel}>Selected file:</Text>
-                        <Text style={styles.fileName}>{selectedFile.name}</Text>
-                    </View>
-                    
-                    )}
-                    
-                    <Button
-                        mode="contained"
-                        onPress={handleUpload}
-                        style={styles.button}
-                        buttonColor="#623528"
-                        textColor="#D9A883"
-                        disabled={!selectedFile || loading}
-                        >
-                        {loading ? "Uploading..." : "Upload Resume"}
-                    </Button>
-                    {extractedText ? (
-                    <View style={styles.textEditorContainer}>
-                        <Text style={styles.fileLabel}>Extracted text:</Text>
+          <View style={styles.footer}>
+            <Button
+              mode="outlined"
+              style={styles.secondaryButton}
+              labelStyle={styles.secondaryButtonLabel}
+              textColor="#2A150D"
+              onPress={previousStep}
+              disabled={step === 0 || saving}
+            >
+              Previous
+            </Button>
 
-                        <TextInput
-                        style={styles.textEditor}
-                        value={extractedText}
-                        onChangeText={setExtractedText}
-                        multiline
-                        textAlignVertical="top"
-                        placeholder="Extracted text will appear here..."
-                        placeholderTextColor="#A98062"
-                        
-                        outlineColor="#D9A883"
-                        activeOutlineColor="#623528"
-                        textColor="#343434"
-                      
-                        />
-                    </View>
-                    ) : null}
-                    {extractedText ? (
-                    <Button
-                        mode="contained"
-                        onPress={handleSave}
-                        style={styles.button}
-                        buttonColor="#623528"
-                        textColor="#D9A883"
-                        disabled={saving}
-                    >
-                        {saving ? "Saving..." : "Save Resume Text"}
-                    </Button>
-                    ) : null}
-                </Card.Content>
-                </Card>
-            </View>
-
-
-        </ScrollView>
-      
+            {step < 5 ? (
+              <Button
+                mode="contained"
+                style={styles.primaryButton}
+                buttonColor="#623528"
+                onPress={handleNext}
+                disabled={saving}
+              >
+                Next
+              </Button>
+            ) : (
+              <Button
+                mode="contained"
+                style={styles.primaryButton}
+                buttonColor="#623528"
+                onPress={handleSave}
+                loading={saving}
+                disabled={saving}
+              >
+                Save
+              </Button>
+            )}
+          </View>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F5EDE3",
-  },
-  content: {
-    padding: 24,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: "600",
-    color: "#343434",
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#956643",
-    lineHeight: 22,
-    marginBottom: 24,
-  },
-  card: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "#D9A883",
-  },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: "600",
-    color: "#343434",
-    marginBottom: 8,
-  },
-  cardText: {
-    fontSize: 14,
-    color: "#956643",
-    lineHeight: 22,
-    marginBottom: 18,
-  },
-  button: {
-    backgroundColor: "#623528",
-    borderRadius: 8,
-    
-  },
-  textEditorContainer: {
-    marginTop: 18,
-    marginBottom: 18,
-  },
-    textEditor: {
-    minHeight: 220,
-    backgroundColor: "#FFFFFF",
-    borderWidth: 1,
-    borderColor: "#D9A883",
-    borderRadius: 12,
-    padding: 14,
-    color: "#050404",
-    fontSize: 14,
-    lineHeight: 22,
-    marginTop: 18,
-    marginBottom: 18,
-    
-  },
-
-  fileBox: {
-    marginTop: 18,
-    marginBottom: 18,
-    padding: 14,
-    borderRadius: 12,
-    backgroundColor: "#F0E0CE",
-    borderWidth: 1,
-    borderColor: "#D9A883",
-  },
-  fileLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#623528",
-    marginBottom: 4,
-  },
-  fileName: {
-    fontSize: 14,
-    color: "#343434",
-  },
-});
+export default function UploadResumeScreen() {
+  return (
+    <ResumeWizardProvider>
+      <WizardContent />
+    </ResumeWizardProvider>
+  );
+}

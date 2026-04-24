@@ -17,17 +17,13 @@ export const getLatestJobDescription = async () => {
   return response.data?.data;
 };
 
-export const analyzeApplication = async ({ resume, jobDescription, analysisId }) => {
-  const response = await api.post("/api/application/analyze", {
-    resume,
-    job_description: jobDescription,
-    analysis_id: analysisId ?? null,
-  });
-
-  // Expected shape: { status, data: { match_score, matched_skills, missing_skills, ... } }
+// IMPORTANT: backend /api/application/analyze no longer expects request body
+export const analyzeApplication = async () => {
+  const response = await api.post("/api/application/analyze");
   return response.data?.data;
 };
 
+// backend expects resume: string for cover letter
 export const generateCoverLetter = async ({
   resume,
   jobDescription,
@@ -35,12 +31,38 @@ export const generateCoverLetter = async ({
   analysisId,
 }) => {
   const response = await api.post("/api/application/generate-cover-letter", {
-    resume: resume,
+    resume,
     job_description: jobDescription,
-    tone: tone,
+    tone,
     analysis_id: analysisId ?? null,
   });
-
-  // Expected shape: { status, data: { cover_letter } }
   return response.data?.data;
 };
+
+// export const analyzeApplication = async ({ resume, jobDescription, analysisId }) => {
+//   const response = await api.post("/api/application/analyze", {
+//     resume,
+//     job_description: jobDescription,
+//     analysis_id: analysisId ?? null,
+//   });
+
+//   // Expected shape: { status, data: { match_score, matched_skills, missing_skills, ... } }
+//   return response.data?.data;
+// };
+
+// export const generateCoverLetter = async ({
+//   resume,
+//   jobDescription,
+//   tone = "professional",
+//   analysisId,
+// }) => {
+//   const response = await api.post("/api/application/generate-cover-letter", {
+//     resume: resume,
+//     job_description: jobDescription,
+//     tone: tone,
+//     analysis_id: analysisId ?? null,
+//   });
+
+//   // Expected shape: { status, data: { cover_letter } }
+//   return response.data?.data;
+// };

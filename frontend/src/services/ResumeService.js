@@ -4,30 +4,45 @@ import { Platform } from "react-native";
 const BASE_URL = api.defaults.baseURL; 
 
 
-export const uploadResume = async (selectedFile) => {
-  const formData = new FormData();
-  console.log(formData);
-console.log(selectedFile);
+// export const uploadResume = async (selectedFile) => {
+//   const formData = new FormData();
+//   console.log(formData);
+// console.log(selectedFile);
 
-  if (Platform.OS === "web") {
-    formData.append("file", selectedFile.file);
-  } else {
-    formData.append("file", {
-      uri: selectedFile.uri,
-      name: selectedFile.name,
-      type: selectedFile.mimeType || "application/pdf",
-    });
-  }
+//   if (Platform.OS === "web") {
+//     formData.append("file", selectedFile.file);
+//   } else {
+//     formData.append("file", {
+//       uri: selectedFile.uri,
+//       name: selectedFile.name,
+//       type: selectedFile.mimeType || "application/pdf",
+//     });
+//   }
 
-  const response = await api.post(`${BASE_URL}/api/resume/upload`, formData);
+//   const response = await api.post(`${BASE_URL}/api/resume/upload`, formData);
 
-  return response.data;
+//   return response.data;
+// };
+
+
+// export const saveResumeText = async (validatedText) => {
+//   const response = await api.post("/api/resume/save", {
+//     validated_text: validatedText,
+//   });
+//   return response.data;
+// };
+
+export const getLatestResume = async () => {
+  const response = await api.get("/api/resume/latest");
+  return response.data?.data;
 };
 
+export const saveResume = async (payload) => {
+  const response = await api.post("/api/resume/save", payload);
+  return response.data?.data ?? response.data;
+};
 
-export const saveResumeText = async (validatedText) => {
-  const response = await api.post("/api/resume/save", {
-    validated_text: validatedText,
-  });
-  return response.data;
+export const extractResumeSkills = async () => {
+  const response = await api.post("/api/resume/extract-skills");
+  return response.data?.data;
 };

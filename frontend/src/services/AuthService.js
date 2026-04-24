@@ -46,3 +46,13 @@ export const loginUser = async (email, password) => {
 export const logout = async () => {
   await removeToken();
 };
+
+export const getUserProfile = async () => {
+  const response = await api.get("/api/auth/profile");
+  return response.data?.data;
+};
+
+export const updateUserProfile = async (payload) => {
+  const response = await api.put("/api/auth/profile", payload);
+  return response.data?.data;
+};
