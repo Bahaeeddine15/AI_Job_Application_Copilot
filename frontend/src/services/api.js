@@ -5,14 +5,14 @@ import { Platform } from "react-native";
 const API_URL =
   Platform.OS === "android"
   
-    ? "http://ur_ip:8000" // Android 
+    ? "http://192.168.1.5:8000" // Android 
     : Platform.OS === "ios"
-    ? "http://192.168.100.167:8000" // iPhone physique (IP de ton PC)
+    ? "http://192.168.1.5:8000" // iPhone physique (IP de ton PC)
     : "http://127.0.0.1:8000"; // Web local
 
 const api = axios.create({ baseURL: API_URL });
 
-// Charge SecureStore seulement sur mobile
+// Charge ShecureStore seulement sur mobile
 const SecureStore = Platform.OS === "web" ? null : require("expo-secure-store");
 
 const getToken = async () => {

@@ -9,13 +9,43 @@ import {
   analyzeApplication,
   generateCoverLetter,
 } from "../services/ApplicationService";
+import { ResumeFormState } from "../types/resume";
 
 type AnalyzeScreenProps = {
   navigation: {
     navigate: (screen: string, params?: unknown) => void;
   };
 };
-
+function buildResumeText(resume: ResumeFormState | null ) {
+  if (!resume) return "";
+  let text = "";
+  if (resume.profile_summary) text += resume.profile_summary + "\n\n";
+  if (resume.education && resume.education.length)
+    text += "Éducation:\n" + resume.education.map(e => Object.values(e).join(" | ") ).join("\n") + "\n\n";
+  if (resume.experience && resume.experience.length)
+    text += "Expérience:\n" + resume.experience.map(e =>  Object.values(e).join(" | ")  ).join("\n") + "\n\n";
+  const allProjects = [
+    ...(resume.personal_projects || []),
+    ...(resume.academic_projects || []),
+  ];
+  if (allProjects.length)
+    text += "Projets:\n" + allProjects.map(e => Object.values(e).join(" | ")).join("\n") + "\n\n";
+  if (resume.hard_skills && resume.hard_skills.length)
+    text += "Hard skills: " + resume.hard_skills.join(", ") + "\n";
+  if (resume.soft_skills && resume.soft_skills.length)
+    text += "Soft skills: " + resume.soft_skills.join(", ") + "\n";
+  if (resume.languages && resume.languages.length)
+    text += "Langues:\n" + resume.languages.map(e =>
+      Object.values(e).join(" | ")
+    ).join("\n") + "\n";
+  if (resume.hobbies && resume.hobbies.length)
+    text += "Hobbies: " + resume.hobbies.join(", ") + "\n";
+  if (resume.certifications && resume.certifications.length)
+    text += "Certifications:\n" + resume.certifications.map(e =>
+      Object.values(e).join(" | ")
+    ).join("\n") + "\n";
+  return text.trim();
+}
 export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) {
   const [resumeText, setResumeText] = useState("");
   const [jobDescription, setJobDescription] = useState("");
@@ -40,7 +70,8 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
 
           if (!isActive) return;
 
-          setResumeText(resumeData?.content || "");
+          setResumeText(buildResumeText(resumeData));
+          
           setJobDescription(jobData?.job_description || "");
           setAnalysisId(jobData?.id ?? null);
 

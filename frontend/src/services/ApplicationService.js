@@ -18,8 +18,17 @@ export const getLatestJobDescription = async () => {
 };
 
 // IMPORTANT: backend /api/application/analyze no longer expects request body
-export const analyzeApplication = async () => {
-  const response = await api.post("/api/application/analyze");
+//export const analyzeApplication = async () => {
+ // const response = await api.post("/api/application/analyze");
+//  return response.data?.data;
+//};
+
+export const analyzeApplication = async ({ resume, jobDescription, analysisId }) => {
+  const response = await api.post("/api/application/analyze", {
+    resume,
+    job_description: jobDescription,
+    analysis_id: analysisId ?? null,
+  });
   return response.data?.data;
 };
 
