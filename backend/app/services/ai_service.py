@@ -43,13 +43,20 @@ class AIService:
      prompt = f"""
                     You are an AI assistant for resume analysis.
 
-                    Extract the main technical and professional skills and the most important job keywords from the following resume.
+                    Task:
+                    - Search the ENTIRE resume text (profile, experience, projects, project technologies, education, certifications, languages, hobbies, and the skills fields).
+                    - Extract only technical and professional skills explicitly mentioned anywhere in the resume (including inside project descriptions or a 'technologies' line).
+                    - Do NOT infer or invent skills that are not present in the resume text.
 
                     Rules:
                     - Return ONLY a valid JSON array of strings
-                    - No explanation
-                    - No markdown
-                    - Example output: ["FastAPI", "React", "Project Management", "Linux"]
+                    - No explanation, no markdown
+                    - Do NOT infer, guess, or add skills that are not written in the resume
+                    - Do NOT include job keywords that are not actually in the resume
+                    - Normalize each item: trim whitespace and use the most common capitalization (e.g. "Python", "FastAPI")
+                    - Keep items short and literal
+                    - Remove duplicates
+                    - Example output: ["FastAPI", "React", "Project Management", "Linux", "Git"]
 
                     Resume:
                     {resume}
@@ -59,6 +66,20 @@ class AIService:
         temperature=0.0,
         response_format=None,
     )
+     skills = cls._extract_json_array(text)
+
+     # post-normalize & dedupe (defensive)
+     normalized = []
+     seen = set()
+     for s in skills:
+         s_norm = s.strip()
+         key = s_norm.lower()
+         if key and key not in seen:
+             seen.add(key)
+             normalized.append(s_norm)
+     return normalized
+    
+
 
      return cls._extract_json_array(text)
     @classmethod

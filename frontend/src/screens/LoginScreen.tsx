@@ -66,6 +66,8 @@ export default function LoginScreen({ navigation }: any) {
                 label="Email"
                 value={email}
                 onChangeText={setEmail}
+                autoCapitalize="none"
+                autoCorrect={false}
                 mode="outlined"
                 keyboardType="email-address"
                 style={styles.input}
@@ -79,6 +81,8 @@ export default function LoginScreen({ navigation }: any) {
               <TextInput
                 label="Password"
                 value={password}
+                autoCapitalize="none"
+                autoCorrect={false}
                 onChangeText={setPassword}
                 mode="outlined"
                 secureTextEntry={!showPassword}

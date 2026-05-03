@@ -39,9 +39,30 @@ class ApplicationService:
         if isinstance(cover_letter, Exception):
             cover_letter = "Could not generate cover letter at this time."
 
-        resume_skills_lower = [s.lower() for s in skills]
-        matched = [k for k in keywords if k.lower() in resume_skills_lower]
-        missing = [k for k in keywords if k.lower() not in resume_skills_lower]
+        resume_text_lower = resume.lower()
+
+        # dedupe extracted skills and normalize to lowercase for comparisons
+        skills = [s.strip() for s in skills if s and s.strip()]
+        skills = list(dict.fromkeys(skills))  # preserve order, remove duplicates
+        skills_lower = [s.lower() for s in skills]
+
+        matched = []
+        for k in keywords:
+            kl = k.lower().strip()
+            if not kl:
+                continue
+
+            # 1) exact/substring match against extracted skills
+            matches_skill_list = any(kl == s or kl in s for s in skills_lower)
+
+            # 2) literal presence anywhere in the resume text (covers project descriptions)
+            present_in_text = kl in resume_text_lower
+
+            if matches_skill_list or present_in_text:
+                matched.append(k)
+
+        matched_lower = {m.lower() for m in matched}
+        missing = [k for k in keywords if k.lower() not in matched_lower]
 
         return {
             "match_score": round(float(score), 2),
@@ -52,5 +73,4 @@ class ApplicationService:
             "cover_letter": cover_letter,
             "improvement_suggestions": suggestions,
         }
-
     

@@ -1,7 +1,7 @@
 import api from "./api";
-import { Platform } from "react-native";
+// import { Platform } from "react-native";
 
-const BASE_URL = api.defaults.baseURL; 
+// const BASE_URL = api.defaults.baseURL; 
 
 
 // export const uploadResume = async (selectedFile) => {

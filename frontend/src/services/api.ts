@@ -15,7 +15,7 @@ const api = axios.create({ baseURL: API_URL });
 // Charge ShecureStore seulement sur mobile
 const SecureStore = Platform.OS === "web" ? null : require("expo-secure-store");
 
-const getToken = async () => {
+const getToken = async() : Promise<string | null> => {
   if (Platform.OS === "web") {
     return window.localStorage.getItem("access_token");
   }

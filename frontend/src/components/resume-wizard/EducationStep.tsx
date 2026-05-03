@@ -59,7 +59,7 @@ export default function EducationStep() {
             <TextInput mode="outlined" label="Domaine *" value={item.field} onChangeText={(t) => updateEducation(index, "field", t)} style={styles.input} {...inputAppearance} />
             <TextInput mode="outlined" label="Date début *" value={item.start_date} onChangeText={(t) => updateEducation(index, "start_date", t)} style={styles.input} {...inputAppearance} />
             <TextInput mode="outlined" label="Date fin *" value={item.end_date} onChangeText={(t) => updateEducation(index, "end_date", t)} style={styles.input} {...inputAppearance} />
-            <TextInput mode="outlined" label="Description *" value={item.description} onChangeText={(t) => updateEducation(index, "description", t)} style={styles.textArea} multiline {...inputAppearance} />
+            <TextInput mode="outlined" label="Description " value={item.description} onChangeText={(t) => updateEducation(index, "description", t)} style={styles.textArea} multiline {...inputAppearance} />
 
             <Button mode="text" onPress={() => removeEducation(index)} disabled={form.education.length === 1}>
               Remove

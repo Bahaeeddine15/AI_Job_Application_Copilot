@@ -91,7 +91,7 @@ export default function PersonalStep() {
         <Text style={styles.sectionTitle}>Profile</Text>
         <TextInput
           mode="outlined"
-          label="Profile summary"
+          label="Profile summary *"
           value={form.profile_summary}
           onChangeText={(text) => setForm((prev) => ({ ...prev, profile_summary: text }))}
           style={styles.textArea}

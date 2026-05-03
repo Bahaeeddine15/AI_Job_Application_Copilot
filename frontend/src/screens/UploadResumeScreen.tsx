@@ -20,6 +20,12 @@ function isFilled(value: string) {
   return value.trim().length > 0;
 }
 
+function allEducationFieldsFilled(items: Array<Record<string, string>>) {
+  if (items.length === 0) return false;
+  const required = ["institution", "degree", "field", "start_date", "end_date"];
+  return items.every((item) => required.every((k) => isFilled(item[k] || "")));
+}
+
 function allObjectFieldsFilled(items: Array<Record<string, string>>) {
   if (items.length === 0) return false;
   return items.every((item) => Object.values(item).every((value) => isFilled(value)));
@@ -46,11 +52,12 @@ function isStepValid(step: number, form: ResumeFormState) {
     return (
       isFilled(form.professional_email) &&
       isFilled(form.phone_number) &&
-      isFilled(form.linkedin_url)
+      isFilled(form.linkedin_url) &&
+      isFilled(form.profile_summary)
     );
   }
 
-  if (step === 1) return allObjectFieldsFilled(form.education as Array<Record<string, string>>);
+  if (step === 1) return allEducationFieldsFilled(form.education as Array<Record<string, string>>);
   if (step === 2) return allObjectFieldsFilled(form.experience as Array<Record<string, string>>);
 
   if (step === 3) {

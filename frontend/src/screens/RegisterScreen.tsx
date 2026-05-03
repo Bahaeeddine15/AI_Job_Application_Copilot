@@ -91,6 +91,8 @@ export default function RegisterScreen({ navigation }: any) {
 
               <TextInput
                 label="Email"
+                autoCapitalize="none"
+                autoCorrect={false}
                 value={email}
                 onChangeText={setEmail}
                 mode="outlined"
@@ -105,6 +107,8 @@ export default function RegisterScreen({ navigation }: any) {
 
               <TextInput
                 label="Password"
+                autoCapitalize="none"
+                autoCorrect={false}
                 value={password}
                 onChangeText={setPassword}
                 mode="outlined"
@@ -127,6 +131,8 @@ export default function RegisterScreen({ navigation }: any) {
               <TextInput
                 label="Confirm Password"
                 value={confirmPassword}
+                autoCapitalize="none"
+                autoCorrect={false}
                 onChangeText={setConfirmPassword}
                 mode="outlined"
                 secureTextEntry={!showConfirmPassword}

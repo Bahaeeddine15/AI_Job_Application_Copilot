@@ -135,3 +135,49 @@ async def save_job_description(
             "message": "Job description saved successfully"
         }
     )
+
+@router.get("/history")
+async def get_history(
+    page: int = 1,
+    limit: int = 10,
+    db=Depends(get_db),
+    current_user: Users = Depends(get_current_user)
+):
+    page = max(page, 1)
+    limit = max(min(limit, 50), 1)
+    offset = (page - 1) * limit
+
+    query = db.query(Analyses).filter(Analyses.user_id == current_user.id)
+
+    total = query.count()
+
+    analyses = (
+        query
+        .order_by(Analyses.created_at.desc(), Analyses.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    return success_response(
+        data={
+            "items": [
+                {
+                    "id": a.id,
+                    "resume_id": a.resume_id,
+                    "job_description": a.job_description,
+                    "match_score": a.match_score,
+                    "matched_skills": a.matched_skills or [],
+                    "missing_skills": a.missing_skills or [],
+                    "cover_letter": a.cover_letter,
+                    "status": a.status,
+                    "created_at": a.created_at,
+                }
+                for a in analyses
+            ],
+            "page": page,
+            "limit": limit,
+            "total": total,
+            "pages": (total + limit - 1) // limit,
+        }
+    )
