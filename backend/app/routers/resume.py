@@ -1,15 +1,14 @@
-from fastapi import APIRouter, HTTPException, UploadFile, File, Depends
+from fastapi import APIRouter, HTTPException, Depends
 from requests import Session
 
+from app.services.resume_service import ResumeService
 from app.services.auth_service import get_current_user
 from app.models.Users import Users
-from app.models.Resume import Resume
 from app.database.connection import get_db
-from app.schemas.resume_schema import ResumeRequest, SkillsResponse, SummaryResponse, ResumeTextCreate
+from app.schemas.resume_schema import   ResumeCreate
 from app.services.response_service import success_response 
-from app.services.application_service import ApplicationService
-from app.services.file_service import FileService
 from app.services.ai_service import AIService
+
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
@@ -18,12 +17,7 @@ async def get_latest_resume(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user)
 ):
-    latest_resume = (
-        db.query(Resume)
-        .filter(Resume.user_id == current_user.id)
-        .order_by(Resume.created_at.desc())
-        .first()
-    )
+    latest_resume = ResumeService.get_active_resume(db, current_user.id)
 
     if not latest_resume:
         return {
@@ -36,77 +30,50 @@ async def get_latest_resume(
         "status": "success",
         "data": {
             "id": latest_resume.id,
-            "content": latest_resume.content,
-            "created_at": latest_resume.created_at
+            "user_id": latest_resume.user_id,
+            "profile_summary": latest_resume.profile_summary,
+            "education": latest_resume.education,
+            "experience": latest_resume.experience,
+            "projects": latest_resume.projects,
+            "hard_skills": latest_resume.hard_skills,
+            "soft_skills": latest_resume.soft_skills,
+            "languages": latest_resume.languages,
+            "hobbies": latest_resume.hobbies,
+            "certifications": latest_resume.certifications,
+            "is_active": latest_resume.is_active,
+            "created_at": latest_resume.created_at,
+            "updated_at": latest_resume.updated_at
         }
     }
 
-@router.post("/extract-skills", response_model=dict) # You can even use your response schemas here
-async def extract_skills(payload: ResumeRequest):
+@router.post("/extract-skills")
+async def extract_skills(
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
     try:
-        # Call the real Gemini AI service to extract skills
-        skills = await AIService.extract_skills(payload.resume)
-        
-        return success_response(data={"skills": skills})
+        resume = ResumeService.get_active_resume(db, current_user.id)
+
+        if not resume:
+            raise HTTPException(status_code=404, detail="No active resume found")
+
+        resume_text = ResumeService.build_resume_text(resume)
+
+        skills = await AIService.extract_skills(resume_text)
+
+        return {"status": "success", "data": {"skills": skills}}
+
     except Exception as e:
-        # Catch errors if Gemini fails (like rate limits or parsing errors)
         raise HTTPException(status_code=500, detail=str(e))
     
 
-# @router.post("/upload")
-# async def upload_resume(
-#     file: UploadFile = File(...),
-#     db=Depends(get_db),
-#     current_user=Depends(get_current_user)
-# ):
 
-#     file_bytes = await file.read()
-
-#     resume = await ApplicationService.upload_resume(
-#         file_bytes=file_bytes,
-#         user_id=current_user.id,
-#         db=db
-#     )
-
-#     return {
-#         "status": "success",
-#         "data": {
-#             "resume_id": resume.id
-#         }
-#     }
-
-@router.post("/upload")
-async def upload_resume(file: UploadFile = File(...)):
-
-    file_bytes = await file.read()
-
-    text = FileService.extract_text_from_pdf(file_bytes)
-
-    return {
-        "status": "success",
-        "data": {
-            "extracted_text": text  
-        }
-    }
 #this endpoint is for saving the validated resume text to the database after extraction and any necessary cleaning. It assumes a user_id of 1 for now, but this should be replaced with the actual logged-in user's ID in a real application.
 @router.post("/save")
-async def save_resume_text(payload: ResumeTextCreate, db: Session = Depends(get_db), current_user: Users = Depends(get_current_user)):
-    
-    resume = Resume(
-        user_id=current_user.id,  #  real logged-in user
-        content=payload.validated_text
-    )
-
-    db.add(resume)
-    db.commit()
-    db.refresh(resume)
-
-    return {
-        "status": "success",
-        "data": {
-            "id": resume.id,
-            "content": resume.content,
-            "created_at": resume.created_at
-        },
-    }
+async def save_resume(
+    payload: ResumeCreate,
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    return ResumeService.save_resume(db, current_user, payload)
     

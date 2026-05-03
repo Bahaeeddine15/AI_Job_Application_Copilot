@@ -6,13 +6,15 @@ from app.models.Users import Users
 
 from app.services.auth_service import get_current_user
 from app.schemas.application_schema import (
-    AnalyzeRequest,
     CoverLetterRequest,
     OptimizeResumeRequest,
 )
 from app.services.ai_service import AIService
 from app.services.application_service import ApplicationService
 from app.services.response_service import error_response, success_response
+from app.services.analysis_service import AnalysisService
+from app.services.resume_service import ResumeService   
+from app.models.Resume import Resume
 
 router = APIRouter(
     prefix="/api/application",
@@ -22,34 +24,45 @@ router = APIRouter(
 
 
 @router.post("/analyze")
-async def analyze_application(
-    payload: AnalyzeRequest,
+async def analyze(
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
-    try:
-        analysis_data = await ApplicationService.analyze_resume(
-            payload.resume,
-            payload.job_description,
+    analysis = AnalysisService.get_latest_analysis(db, current_user.id)
+
+    if not analysis:
+        raise HTTPException(status_code=404, detail="No analysis found")
+
+    resume = (
+        db.query(Resume)
+        .filter(
+            Resume.id == analysis.resume_id,
+            Resume.user_id == current_user.id
         )
+        .first()
+    )
 
-        query = db.query(Analyses).filter(Analyses.user_id == current_user.id)
-        if payload.analysis_id:
-            query = query.filter(Analyses.id == payload.analysis_id)
-        analysis_row = query.order_by(Analyses.created_at.desc(), Analyses.id.desc()).first()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
 
-        if analysis_row:
-            analysis_row.match_score = analysis_data.get("match_score")
-            analysis_row.matched_skills = analysis_data.get("matched_skills", [])
-            analysis_row.missing_skills = analysis_data.get("missing_skills", [])
-            analysis_row.status = "completed"
-            db.commit()
+    resume_text = ResumeService.build_resume_text(resume)
 
-        return success_response(data=analysis_data)
+    result = await ApplicationService.analyze_resume(
+        resume_text,
+        analysis.job_description
+    )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    # update same row
+    analysis.matched_skills = result["matched_skills"]
+    analysis.missing_skills = result["missing_skills"]
+    analysis.match_score = result["match_score"]
+    analysis.status = "completed"
+    analysis.cover_letter = result["cover_letter"]
 
+    db.commit()
+    db.refresh(analysis)
+
+    return success_response(data=result)
 
 @router.post("/generate-cover-letter")
 async def generate_cover_letter_endpoint(

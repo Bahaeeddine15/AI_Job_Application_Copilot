@@ -87,16 +87,17 @@ export default function AppNavigator() {
         screenOptions={screenOptions}
       >
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="Register" component={RegisterScreen} /> 
+        <Stack.Screen name="Register" component={RegisterScreen} />
         <Stack.Screen name="Home" component={HomeScreen} />
         <Stack.Screen name="History" component={HistoryScreen} />
         <Stack.Screen name="Settings" component={SettingsScreen} />
-        <Stack.Screen name="AnalyzeResume" component={AnalyseResumeScreen} />
         <Stack.Screen name="Results" component={ResultsScreen} />
         <Stack.Screen name="UploadResume" component={UploadResumeScreen} />
         <Stack.Screen name="JobDescription" component={JobDescriptionScreen} />
+        <Stack.Screen name="AnalyzeResume" component={AnalyseResumeScreen} options={{ unmountOnBlur: true }}
+        />
       </Stack.Navigator>
-      
+
     </NavigationContainer>
   );
 }
