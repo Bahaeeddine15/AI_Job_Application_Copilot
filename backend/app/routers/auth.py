@@ -103,6 +103,8 @@ def get_profile(
     return success_response(
         data={
             "id": current_user.id,
+            "first_name": current_user.first_name,
+            "last_name": current_user.last_name,
             "professional_email": current_user.professional_email,
             "phone_number": current_user.phone_number,
             "linkedin_url": current_user.linkedin_url,

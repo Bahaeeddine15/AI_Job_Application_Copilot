@@ -7,7 +7,7 @@ const API_URL =
   
     ? "http://192.168.100.6:8000" // Android 
     : Platform.OS === "ios"
-    ? "http://192.168.1.5:8000" // iPhone physique (IP de ton PC)
+    ? "http://172.20.10.2:8000" // iPhone physique (IP de ton PC)
     : "http://127.0.0.1:8000"; // Web local
 
 const api = axios.create({ baseURL: API_URL });

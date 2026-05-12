@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
@@ -9,61 +9,110 @@ import AnalyseResumeScreen from "../screens/AnalyseResumeScreen";
 import UploadResumeScreen from "../screens/UploadResumeScreen";
 import JobDescriptionScreen from "../screens/JobDescriptionScreen";
 import ResultsScreen from "../screens/ResultsScreen";
-
-
 import HomeScreen from "../screens/HomeScreen";
-
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 
+import { getUserProfile, logout } from "../services/AuthService";
+
 const Stack = createStackNavigator();
+
+const capitalizeWord = (s) => {
+  if (!s) return "";
+  const t = s.toString().trim();
+  if (!t) return "";
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+};
+
+const capitalizeWords = (s) => {
+  if (!s) return "";
+  return s
+    .toString()
+    .split(" ")
+    .filter(Boolean)
+    .map((w) => capitalizeWord(w))
+    .join(" ");
+};
 
 function AppHeader({ navigation }) {
   const [menuVisible, setMenuVisible] = useState(false);
-  const userFullName = "Nassima Ait Lfakir";
+  const [userFullName, setUserFullName] = useState("There");
+  const appName = capitalizeWords("ai job copilot");
+
+  useEffect(() => {
+    let mounted = true;
+    const loadProfile = async () => {
+      try {
+        const data = await getUserProfile();
+        if (!mounted || !data) return;
+        const first = capitalizeWords(data.first_name || "");
+        const last = capitalizeWords(data.last_name || "");
+        const full = `${first} ${last}`.trim();
+        setUserFullName(full.length ? full : "There");
+      } catch {
+        /* ignore */
+      }
+    };
+    loadProfile();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    setMenuVisible(false);
+    try {
+      await logout();
+    } finally {
+      navigation.reset({ index: 0, routes: [{ name: "Login" }] });
+    }
+  };
 
   return (
     <View style={styles.header}>
-      <Text style={styles.appName}>Ai Job Copilot</Text>
+      <Text style={styles.appName}>{appName}</Text>
+
       <Menu
         visible={menuVisible}
         onDismiss={() => setMenuVisible(false)}
         anchor={
-          <IconButton
-            icon="menu"
-            iconColor="#FFFFFF"
-            size={28}
-            onPress={() => setMenuVisible(true)}
-            style={{ margin: 0 }}
-          />
+          <View style={styles.rightIcons}>
+            <IconButton
+              icon="home"
+              iconColor="#FFFFFF"
+              size={28}
+              onPress={() => navigation.navigate("Home")}
+              style={styles.iconButton}
+            />
+            <IconButton
+              icon="menu"
+              iconColor="#FFFFFF"
+              size={28}
+              onPress={() => setMenuVisible(true)}
+              style={styles.iconButton}
+            />
+          </View>
         }
         contentStyle={styles.menuContent}
       >
+        <Menu.Item title={userFullName} titleStyle={styles.menuName} disabled />
         <Menu.Item
-          title={userFullName}
-          titleStyle={styles.menuName}
-          disabled
-        />
-        <Menu.Item
-          onPress={() => { setMenuVisible(false); navigation.navigate("Home"); }}
-          title="Home"
-          titleStyle={styles.menuItem}
-        />
-        <Menu.Item
-          onPress={() => { setMenuVisible(false); navigation.navigate("History"); }}
+          onPress={() => {
+            setMenuVisible(false);
+            navigation.navigate("History");
+          }}
           title="History"
           titleStyle={styles.menuItem}
         />
         <Menu.Item
-          onPress={() => { setMenuVisible(false); navigation.navigate("Settings"); }}
+          onPress={() => {
+            setMenuVisible(false);
+            navigation.navigate("Settings");
+          }}
           title="Settings"
           titleStyle={styles.menuItem}
         />
-        <Menu.Item
-          onPress={() => { setMenuVisible(false); navigation.navigate("JobDescription"); }}
-          title="Job Description"
-          titleStyle={styles.menuItem}
-        />
+        <Menu.Item onPress={handleLogout} title="Logout" titleStyle={styles.menuItem} />
       </Menu>
     </View>
   );
@@ -72,7 +121,6 @@ function AppHeader({ navigation }) {
 export default function AppNavigator() {
   const screenOptions = ({ navigation, route }) => ({
     header: () => {
-      // N'affiche le header que si on n'est pas sur Login ou Register
       if (route.name === "Login" || route.name === "Register") {
         return null;
       }
@@ -94,7 +142,10 @@ export default function AppNavigator() {
         <Stack.Screen name="Results" component={ResultsScreen} />
         <Stack.Screen name="UploadResume" component={UploadResumeScreen} />
         <Stack.Screen name="JobDescription" component={JobDescriptionScreen} />
-        <Stack.Screen name="AnalyzeResume" component={AnalyseResumeScreen} options={{ unmountOnBlur: true }}
+        <Stack.Screen
+          name="AnalyzeResume"
+          component={AnalyseResumeScreen}
+          options={{ unmountOnBlur: true }}
         />
       </Stack.Navigator>
 
@@ -104,7 +155,7 @@ export default function AppNavigator() {
 
 const styles = StyleSheet.create({
   header: {
-    backgroundColor: "#343434", // Espresso Noir
+    backgroundColor: "#343434",
     paddingTop: 52,
     paddingBottom: 14,
     paddingHorizontal: 20,
@@ -114,10 +165,18 @@ const styles = StyleSheet.create({
   },
   appName: {
     fontSize: 22,
-    fontWeight: "300",
-    color: "#D9A883", // Toasty — warm accent on dark
-    letterSpacing: 1.5,
-    textTransform: "lowercase",
+    fontWeight: "600",
+    color: "#D9A883",
+    letterSpacing: 1.2,
+    textTransform: "none",
+  },
+  rightIcons: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  iconButton: {
+    margin: 0,
+    marginLeft: 6,
   },
   menuContent: {
     backgroundColor: "#343434",
@@ -125,13 +184,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   menuName: {
-    color: "#D9A883", // Toasty
+    color: "#D9A883",
     fontSize: 13,
     fontWeight: "600",
     letterSpacing: 0.5,
   },
   menuItem: {
-    color: "#A98062", // Espresso Foam
+    color: "#A98062",
     fontSize: 15,
   },
 });

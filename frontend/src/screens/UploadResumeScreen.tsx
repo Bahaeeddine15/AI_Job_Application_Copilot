@@ -1,5 +1,5 @@
-import React, { useState } from "react";
-import { ScrollView, View } from "react-native";
+import React, { useEffect, useState } from "react";
+import { ScrollView, View, Pressable } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Text } from "react-native-paper";
 import { ResumeWizardProvider, useResumeWizard } from "../context/ResumeWizardContext";
@@ -13,7 +13,7 @@ import OptionalStep from "../components/resume-wizard/OptionalStep";
 import { styles } from "../components/resume-wizard/wizardStyles";
 import { ResumeFormState } from "../types/resume";
 import { buildResumeSavePayload } from "../utils/resumePayload";
-import { saveResume } from "../services/ResumeService";
+import { getLatestResume, saveResume } from "../services/ResumeService";
 import { updateUserProfile } from "../services/AuthService";
 
 function isFilled(value: string) {
@@ -47,6 +47,16 @@ function allProjectsFilled(items: Array<{ title: string; description: string; te
   );
 }
 
+// Validation des dates chronologiques
+function hasInvalidDates(items: Array<any>, startField: string, endField: string): boolean {
+  return items.some((item) => {
+    const start = item[startField];
+    const end = item[endField];
+    if (!start || !end) return false;
+    return new Date(start) >= new Date(end);
+  });
+}
+
 function isStepValid(step: number, form: ResumeFormState) {
   if (step === 0) {
     return (
@@ -57,8 +67,17 @@ function isStepValid(step: number, form: ResumeFormState) {
     );
   }
 
-  if (step === 1) return allEducationFieldsFilled(form.education as Array<Record<string, string>>);
-  if (step === 2) return allObjectFieldsFilled(form.experience as Array<Record<string, string>>);
+  if (step === 1) {
+    const educationValid = allEducationFieldsFilled(form.education as Array<Record<string, string>>);
+    const educationDatesValid = !hasInvalidDates(form.education, "start_date", "end_date");
+    return educationValid && educationDatesValid;
+  }
+
+  if (step === 2) {
+    const experienceValid = allObjectFieldsFilled(form.experience as Array<Record<string, string>>);
+    const experienceDatesValid = !hasInvalidDates(form.experience, "start_date", "end_date");
+    return experienceValid && experienceDatesValid;
+  }
 
   if (step === 3) {
     return allProjectsFilled(form.personal_projects) && allProjectsFilled(form.academic_projects);
@@ -71,22 +90,140 @@ function isStepValid(step: number, form: ResumeFormState) {
     return languagesOk && hardOk && softOk;
   }
 
-  return true; // optional page
+  return true;
 }
 
-function WizardContent() {
-  const { step, nextStep, previousStep, form } = useResumeWizard();
+const emptyEducation = {
+  institution: "",
+  degree: "",
+  field: "",
+  start_date: "",
+  end_date: "",
+  description: "",
+};
+
+const emptyExperience = {
+  title: "",
+  company: "",
+  location: "",
+  start_date: "",
+  end_date: "",
+  description: "",
+};
+
+const emptyProject = { title: "", description: "", technologies: "" };
+const emptyLanguage = { name: "", level: "" };
+const emptyCertification = { name: "", issuer: "", issue_date: "" };
+
+const toStr = (v: unknown): string => (typeof v === "string" ? v : "");
+
+const mapEducation = (items: unknown) => {
+  if (!Array.isArray(items) || items.length === 0) return [emptyEducation];
+  return items.map((i: any) => ({
+    institution: toStr(i?.institution),
+    degree: toStr(i?.degree),
+    field: toStr(i?.field),
+    start_date: toStr(i?.start_date),
+    end_date: toStr(i?.end_date),
+    description: toStr(i?.description),
+  }));
+};
+
+const mapExperience = (items: unknown) => {
+  if (!Array.isArray(items) || items.length === 0) return [emptyExperience];
+  return items.map((i: any) => ({
+    title: toStr(i?.title),
+    company: toStr(i?.company),
+    location: toStr(i?.location),
+    start_date: toStr(i?.start_date),
+    end_date: toStr(i?.end_date),
+    description: toStr(i?.description),
+  }));
+};
+
+const mapProjects = (items: unknown) => {
+  if (!Array.isArray(items) || items.length === 0) return [emptyProject];
+  return items.map((i: any) => ({
+    title: toStr(i?.title),
+    description: toStr(i?.description),
+    technologies: toStr(i?.technologies),
+  }));
+};
+
+const mapLanguages = (items: unknown) => {
+  if (!Array.isArray(items) || items.length === 0) return [emptyLanguage];
+  return items.map((i: any) => ({
+    name: toStr(i?.name),
+    level: toStr(i?.level),
+  }));
+};
+
+const mapCertifications = (items: unknown) => {
+  if (!Array.isArray(items) || items.length === 0) return [emptyCertification];
+  return items.map((i: any) => ({
+    name: toStr(i?.name),
+    issuer: toStr(i?.issuer),
+    issue_date: toStr(i?.issue_date),
+  }));
+};
+
+const mapStringList = (items: unknown, fallback: string[] = [""]) => {
+  if (!Array.isArray(items) || items.length === 0) return fallback;
+  return items.map((v) => toStr(v));
+};
+
+function WizardContent({ navigation }: { navigation: any }) {
+  const { step, nextStep, previousStep, form, setForm } = useResumeWizard();
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
-  const [success, setSuccess] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadLatestResume = async () => {
+      try {
+        const latest = await getLatestResume();
+        if (!mounted || !latest) return;
+
+        setForm((prev) => ({
+          ...prev,
+          profile_summary: toStr(latest.profile_summary),
+          education: mapEducation(latest.education),
+          experience: mapExperience(latest.experience),
+          personal_projects: mapProjects(latest.projects),
+          academic_projects: [emptyProject],
+          hard_skills: mapStringList(latest.hard_skills, [""]),
+          soft_skills: mapStringList(latest.soft_skills, [""]),
+          languages: mapLanguages(latest.languages),
+          hobbies: mapStringList(latest.hobbies, [""]),
+          certifications: mapCertifications(latest.certifications),
+        }));
+      } catch {
+        // aucun CV actif
+      }
+    };
+
+    loadLatestResume();
+
+    return () => {
+      mounted = false;
+    };
+  }, [setForm]);
 
   const handleNext = () => {
     if (!isStepValid(step, form)) {
+      if (step === 1 && hasInvalidDates(form.education, "start_date", "end_date")) {
+        setError("Education dates must be in chronological order (start date before end date).");
+        return;
+      }
+      if (step === 2 && hasInvalidDates(form.experience, "start_date", "end_date")) {
+        setError("Experience dates must be in chronological order (start date before end date).");
+        return;
+      }
       setError("Please complete all required fields on this step before continuing.");
       return;
     }
     setError("");
-    setSuccess("");
     nextStep();
   };
 
@@ -94,10 +231,20 @@ function WizardContent() {
     try {
       setSaving(true);
       setError("");
-      setSuccess("");
 
       if (!isStepValid(0, form) || !isStepValid(1, form) || !isStepValid(2, form) || !isStepValid(4, form)) {
+        if (hasInvalidDates(form.education, "start_date", "end_date")) {
+          setError("Education dates must be in chronological order (start date before end date).");
+          setSaving(false);
+          return;
+        }
+        if (hasInvalidDates(form.experience, "start_date", "end_date")) {
+          setError("Experience dates must be in chronological order (start date before end date).");
+          setSaving(false);
+          return;
+        }
         setError("Please complete all required fields before saving.");
+        setSaving(false);
         return;
       }
 
@@ -116,7 +263,9 @@ function WizardContent() {
         saveResume(resumePayload),
       ]);
 
-      setSuccess("Resume saved successfully.");
+      navigation.navigate("Home", {
+        successMessage: "Resume saved successfully.",
+      });
     } catch (e: any) {
       setError(e?.response?.data?.detail || e?.response?.data?.message || "Failed to save resume.");
     } finally {
@@ -146,7 +295,6 @@ function WizardContent() {
           {renderStep()}
 
           {error ? <Text style={styles.errorText}>{error}</Text> : null}
-          {success ? <Text style={styles.successText}>{success}</Text> : null}
 
           <View style={styles.footer}>
             <Button
@@ -189,10 +337,10 @@ function WizardContent() {
   );
 }
 
-export default function UploadResumeScreen() {
+export default function UploadResumeScreen({ navigation }: { navigation: any }) {
   return (
     <ResumeWizardProvider>
-      <WizardContent />
+      <WizardContent navigation={navigation} />
     </ResumeWizardProvider>
   );
 }

@@ -1,16 +1,17 @@
-import React from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { getUserProfile } from "../services/AuthService";
 
 const ACTIONS = [
   {
     id: "UploadResume",
-    title: "Upload your resume",
+    title: "Create your resume",
     description:
       "Add your CV so we can extract your skills, experience, and strengths.",
-    cta: "Upload CV",
+    cta: "Create CV",
     icon: "file-upload-outline",
   },
   {
@@ -31,16 +32,85 @@ const ACTIONS = [
   },
 ];
 
-export default function HomeScreen({ navigation }) {
+type UserProfile = {
+  first_name?: string;
+  last_name?: string;
+};
+
+const capitalize = (value?: string) => {
+  if (!value) return "";
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  return trimmed.charAt(0).toUpperCase() + trimmed.slice(1).toLowerCase();
+};
+
+export default function HomeScreen({ navigation, route }: any) {
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [bannerMessage, setBannerMessage] = useState<string>("");
+  const [bannerPosition, setBannerPosition] = useState<"top" | "bottom">("top");
+
+  useEffect(() => {
+    let mounted = true;
+
+    const loadProfile = async () => {
+      try {
+        const data = await getUserProfile();
+        if (!mounted) return;
+        setProfile(data || null);
+      } catch {
+        if (!mounted) return;
+        setProfile(null);
+      }
+    };
+
+    loadProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const message = route?.params?.successMessage;
+    const pos = route?.params?.bannerPosition === "bottom" ? "bottom" : "top";
+    if (!message) return;
+
+    setBannerMessage(message);
+    setBannerPosition(pos);
+
+    const timer = setTimeout(() => {
+      setBannerMessage("");
+    }, 2500);
+
+    return () => clearTimeout(timer);
+  }, [route?.params?.successMessage, route?.params?.bannerPosition]);
+
+  const fullName = useMemo(() => {
+    const first = capitalize(profile?.first_name);
+    const last = capitalize(profile?.last_name);
+    const name = `${first} ${last}`.trim();
+    return name.length > 0 ? name : "there";
+  }, [profile]);
+
+  // dynamic padding so content isn't hidden under the banner
+  const contentExtraStyle = bannerMessage && bannerPosition === "top" ? { paddingTop: 36 } :
+                            bannerMessage && bannerPosition === "bottom" ? { paddingBottom: 80 } : {};
+
   return (
     <SafeAreaView style={styles.container} edges={["bottom"]}>
+      {bannerMessage && bannerPosition === "top" ? (
+        <View style={styles.successBannerTop}>
+          <Text style={styles.successBannerText}>{bannerMessage}</Text>
+        </View>
+      ) : null}
+
       <ScrollView
         style={{ flex: 1 }}
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, contentExtraStyle]}
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.welcomeSection}>
-          <Text style={styles.greeting}>Hi, Nassima.</Text>
+          <Text style={styles.greeting}>Hi, {fullName}.</Text>
           <Text style={styles.subtitle}>Welcome to your job assistant</Text>
           <Text style={styles.description}>
             Let’s move your job search forward today.
@@ -70,15 +140,14 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.card}>
                 <View style={styles.cardIconContainer}>
                   <MaterialCommunityIcons
-                  name={action.icon}
-                  size={26}
-                  color="#623528"
-                  style={styles.cardIcon}
-                />
-                <Text style={styles.cardTitle}>{action.title}</Text>
-
+                    name={action.icon as any}
+                    size={26}
+                    color="#623528"
+                    style={styles.cardIcon}
+                  />
+                  <Text style={styles.cardTitle}>{action.title}</Text>
                 </View>
-                
+
                 <Text style={styles.cardDescription}>{action.description}</Text>
 
                 <View style={styles.badge}>
@@ -97,6 +166,12 @@ export default function HomeScreen({ navigation }) {
           </Text>
         </View>
       </ScrollView>
+
+      {bannerMessage && bannerPosition === "bottom" ? (
+        <View style={styles.successBannerBottom}>
+          <Text style={styles.successBannerText}>{bannerMessage}</Text>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -106,13 +181,55 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: "#F5EDE3",
   },
+  successBannerTop: {
+    position: "absolute",
+    top: 12,
+    left: 16,
+    right: 16,
+    zIndex: 100,
+    backgroundColor: "#2F6B3D",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#A9D8B2",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  successBannerBottom: {
+    position: "absolute",
+    bottom: 12,
+    left: 16,
+    right: 16,
+    zIndex: 100,
+    backgroundColor: "#2F6B3D",
+    borderRadius: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderWidth: 1,
+    borderColor: "#A9D8B2",
+    shadowColor: "#000",
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  successBannerText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
+    textAlign: "center",
+  },
   content: {
     padding: 24,
     paddingBottom: 48,
     flexGrow: 1,
     minHeight: "100%",
+    paddingTop: 36,
   },
-
   welcomeSection: {
     marginBottom: 28,
     marginTop: 8,
@@ -136,7 +253,6 @@ const styles = StyleSheet.create({
     lineHeight: 24,
     maxWidth: "95%",
   },
-
   heroCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
@@ -164,7 +280,6 @@ const styles = StyleSheet.create({
     color: "#956643",
     lineHeight: 22,
   },
-
   sectionHeader: {
     marginBottom: 16,
   },
@@ -173,7 +288,6 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#343434",
   },
-
   actionsContainer: {
     marginBottom: 24,
   },
@@ -210,7 +324,6 @@ const styles = StyleSheet.create({
     color: "#D9A883",
     letterSpacing: 0.3,
   },
-
   tip: {
     backgroundColor: "#F0E0CE",
     borderRadius: 12,
@@ -229,11 +342,10 @@ const styles = StyleSheet.create({
     color: "#623528",
     lineHeight: 20,
   },
-  
-cardIconContainer: {
-  flexDirection: "row",
-  alignItems: "center",
-  gap: 10,
-  
+  cardIcon: {},
+  cardIconContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
 });
