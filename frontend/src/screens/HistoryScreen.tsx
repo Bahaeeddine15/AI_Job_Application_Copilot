@@ -4,6 +4,7 @@ import { ActivityIndicator, Card, Text, Button } from "react-native-paper";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import api from "../services/api";
+import { getUserProfile } from "../services/AuthService";
 
 type AnalysisItem = {
   id: number;
@@ -15,6 +16,128 @@ type AnalysisItem = {
   cover_letter: string | null;
   status: string;
   created_at: string;
+};
+
+type UserProfile = {
+  first_name?: string;
+  last_name?: string;
+  professional_email?: string;
+  phone_number?: string;
+  city?: string;
+  country?: string;
+};
+
+// helpers: capitalization & localization
+const capitalizeName = (value?: string) => {
+  if (!value?.trim()) return "";
+  return value
+    .trim()
+    .split(/\s+/)
+    .map((part) => {
+      const lower = part.toLowerCase();
+      return lower.charAt(0).toUpperCase() + lower.slice(1);
+    })
+    .join(" ");
+};
+
+const localize = (_lang: string) => {
+  return {
+    subjectLabel: "Objet :",
+    closing: "Cordialement,",
+    postalPlaceholder: "Code postal + Ville",
+    applicationFor: "Candidature pour le poste",
+  };
+};
+
+const escapeHtml = (value: string) =>
+  value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+// build HTML using parsed cover letter JSON when available
+const buildCoverLetterHtml = (item: AnalysisItem, profile: UserProfile | null) => {
+  let parsed: { subject?: string; body?: string; language?: string } | null = null;
+  const raw = item.cover_letter || "";
+  try {
+    const maybe = JSON.parse(raw);
+    if (maybe && typeof maybe === "object" && (maybe.subject || maybe.body || maybe.language)) {
+      parsed = maybe;
+    }
+  } catch {
+    parsed = null;
+  }
+
+  const lang = (parsed?.language || "fr").toLowerCase().startsWith("fr") ? "fr" : "fr";
+  const loc = localize(lang);
+
+  const firstName = capitalizeName(profile?.first_name);
+  const lastName = capitalizeName(profile?.last_name);
+  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "[Votre nom complet]";
+
+  const streetAddress = "[Votre adresse]";
+  const postalCodeCity = profile?.city ? profile.city : loc.postalPlaceholder;
+  const email = profile?.professional_email || "[Votre adresse e-mail]";
+  const phone = profile?.phone_number || "[Votre numéro de téléphone]";
+
+  const companyName = "[Nom de l'entreprise]";
+  const hiringManagerName = "[Employeur / Nom du recruteur]";
+  const hiringManagerPosition = "[Poste du recruteur]";
+  const companyAddress = "[Adresse de l'entreprise]";
+
+  const subject = parsed?.subject ? parsed.subject.trim() : `${loc.applicationFor} ${"[Intitulé du poste]"}`;
+
+  let bodyText = parsed?.body ? parsed.body.trim() : raw.trim();
+  if (!bodyText) bodyText = "[Le corps de la lettre n'est pas disponible]";
+
+  const paragraphs = bodyText
+    .split(/\n\s*\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  return `
+    <html>
+      <head>
+        <meta charset="utf-8" />
+        <style>
+          body { font-family: Arial, sans-serif; padding: 40px; color: #222; line-height: 1.5; font-size: 14px; }
+          .block { margin-bottom: 16px; }
+          .subject { margin: 16px 0; font-weight: 700; }
+          .body { text-align: justify; }
+          .paragraph { margin: 0 0 12px 0; }
+          .closing { margin-top: 16px; }
+          .signature { margin-top: 12px; font-weight: 700; }
+        </style>
+      </head>
+      <body>
+        <div class="block">
+          <div>${escapeHtml(fullName)}</div>
+          <div>${escapeHtml(streetAddress)}</div>
+          <div>${escapeHtml(postalCodeCity)}</div>
+          <div>${escapeHtml(email)}</div>
+          <div>${escapeHtml(phone)}</div>
+        </div>
+
+        <div class="block">
+          <div>${escapeHtml(companyName)}</div>
+          <div>${escapeHtml(hiringManagerName)}</div>
+          <div>${escapeHtml(hiringManagerPosition)}</div>
+          <div>${escapeHtml(companyAddress)}</div>
+        </div>
+
+        <div class="subject">
+          ${escapeHtml(loc.subjectLabel)} ${escapeHtml(subject)}
+        </div>
+
+        <div class="body">
+          ${paragraphs.map((p) => `<p class="paragraph">${escapeHtml(p)}</p>`).join("")}
+        </div>
+
+        <div class="closing">${escapeHtml(loc.closing)}</div>
+        <div class="signature">${escapeHtml(fullName)}</div>
+      </body>
+    </html>
+  `;
 };
 
 export default function HistoryScreen() {
@@ -73,43 +196,7 @@ export default function HistoryScreen() {
     try {
       setDownloadingId(item.id);
 
-      const html = `
-        <html>
-          <head>
-            <meta charset="utf-8" />
-            <style>
-              body {
-                font-family: Arial, sans-serif;
-                padding: 32px;
-                color: #222;
-                line-height: 1.6;
-              }
-              h1 {
-                color: #623528;
-                font-size: 24px;
-                margin-bottom: 16px;
-              }
-              .meta {
-                margin-bottom: 24px;
-                font-size: 12px;
-                color: #666;
-              }
-              .content {
-                white-space: pre-wrap;
-                font-size: 14px;
-              }
-            </style>
-          </head>
-          <body>
-            <h1>Cover Letter</h1>
-            <div class="meta">
-              Analysis #${item.id} | ${new Date(item.created_at).toLocaleString()}
-            </div>
-            <div class="content">${item.cover_letter.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\n/g, "<br/>")}</div>
-          </body>
-        </html>
-      `;
-
+      const html = buildCoverLetterHtml(item, profile);
       const { uri } = await Print.printToFileAsync({ html });
 
       if (await Sharing.isAvailableAsync()) {
@@ -126,6 +213,24 @@ export default function HistoryScreen() {
       setDownloadingId(null);
     }
   };
+
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(true);
+
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const data = await getUserProfile();
+        setProfile(data || null);
+      } catch {
+        setProfile(null);
+      } finally {
+        setProfileLoading(false);
+      }
+    };
+
+    loadProfile();
+  }, []);
 
   if (loading) {
     return (
@@ -183,7 +288,7 @@ export default function HistoryScreen() {
                 buttonColor="#623528"
                 textColor="#F5EDE3"
                 onPress={() => downloadCoverLetterPdf(item)}
-                disabled={!item.cover_letter || downloadingId === item.id}
+                disabled={!item.cover_letter || downloadingId === item.id || profileLoading}
               >
                 {downloadingId === item.id ? "Preparing PDF..." : "Download Cover Letter PDF"}
               </Button>
