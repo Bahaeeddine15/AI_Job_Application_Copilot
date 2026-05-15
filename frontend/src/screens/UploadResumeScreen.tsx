@@ -60,6 +60,7 @@ function hasInvalidDates(items: Array<any>, startField: string, endField: string
 function isStepValid(step: number, form: ResumeFormState) {
   if (step === 0) {
     return (
+      isFilled(form.title) &&
       isFilled(form.professional_email) &&
       isFilled(form.phone_number) &&
       isFilled(form.linkedin_url) &&

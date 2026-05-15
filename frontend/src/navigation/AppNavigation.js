@@ -12,6 +12,7 @@ import ResultsScreen from "../screens/ResultsScreen";
 import HomeScreen from "../screens/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
+import DownloadResumeScreen from "../screens/DownloadResumeScreen";
 
 import { getUserProfile, logout } from "../services/AuthService";
 
@@ -107,9 +108,9 @@ function AppHeader({ navigation }) {
         <Menu.Item
           onPress={() => {
             setMenuVisible(false);
-            navigation.navigate("Settings");
+            navigation.navigate("DownloadResume");
           }}
-          title="Settings"
+          title="DownloadResume"
           titleStyle={styles.menuItem}
         />
         <Menu.Item onPress={handleLogout} title="Logout" titleStyle={styles.menuItem} />
@@ -147,6 +148,7 @@ export default function AppNavigator() {
           component={AnalyseResumeScreen}
           options={{ unmountOnBlur: true }}
         />
+        <Stack.Screen name="DownloadResume" component={DownloadResumeScreen} />
       </Stack.Navigator>
 
     </NavigationContainer>

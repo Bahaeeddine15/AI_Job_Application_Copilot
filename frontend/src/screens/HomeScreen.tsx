@@ -8,7 +8,7 @@ import { getUserProfile } from "../services/AuthService";
 const ACTIONS = [
   {
     id: "UploadResume",
-    title: "Create your resume",
+    title: "Create resume",
     description:
       "Add your CV so we can extract your skills, experience, and strengths.",
     cta: "Create CV",
@@ -29,6 +29,14 @@ const ACTIONS = [
       "Get a match score, gap analysis, and targeted suggestions to improve your application.",
     cta: "Start analysis",
     icon: "chart-box-outline",
+  },
+  {
+    id: "DownloadResume",
+    title: "Download resume",
+    description:
+      "Download your resume to get started with the analysis.",
+    cta: "Download resume",
+    icon: "file-download-outline",
   },
 ];
 

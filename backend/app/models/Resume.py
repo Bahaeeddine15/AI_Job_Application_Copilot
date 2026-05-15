@@ -22,6 +22,8 @@ class Resume(Base):
 
     is_active = Column(Boolean, nullable=False, default=True)
 
+    title = Column(String(255), nullable=True)
+
     created_at = Column(DateTime, nullable=False, default=func.now())
     updated_at = Column(DateTime, nullable=False, default=func.now(), onupdate=func.now())
 

@@ -14,6 +14,7 @@ type ResumeWizardContextValue = {
 
 const initialForm: ResumeFormState = {
   professional_email: "",
+  title: "",
   phone_number: "",
   linkedin_url: "",
   country: "",
