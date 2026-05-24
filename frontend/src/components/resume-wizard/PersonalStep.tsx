@@ -40,7 +40,21 @@ export default function PersonalStep() {
     <Card style={styles.card}>
       <Card.Content>
         <Text style={styles.sectionTitle}>Personal Information</Text>
-
+        <TextInput
+          label="Resume title"
+          value={form.title}
+          onChangeText={(value) =>
+            setForm((prev) => ({
+              ...prev,
+              title: value,
+            }))
+          }
+          mode="outlined"
+          outlineColor="#D9A883"
+          activeOutlineColor="#623528"
+          textColor="#343434"
+          placeholder="Example: Data Analyst Resume"
+        />
         <TextInput
           mode="outlined"
           label="Professional email *"

@@ -5,6 +5,7 @@ import { Button, Card, Divider, Text, TextInput } from "react-native-paper";
 import { useResumeWizard } from "../../context/ResumeWizardContext";
 import { ExperienceItem } from "../../types/resume";
 import { inputAppearance, styles } from "./wizardStyles";
+import DatePickerField from "./DatePickerField";
 
 export default function ExperienceStep() {
   const { form, setForm } = useResumeWizard();
@@ -42,6 +43,11 @@ export default function ExperienceStep() {
     }));
   };
 
+  const isDateInvalid = (start: string, end: string): boolean => {
+    if (!start || !end) return false;
+    return new Date(start) >= new Date(end);
+  };
+
   return (
     <Card style={styles.card}>
       <Card.Content>
@@ -52,22 +58,68 @@ export default function ExperienceStep() {
           </Button>
         </View>
 
-        {form.experience.map((item, index) => (
-          <View key={`experience-${index}`} style={styles.block}>
-            <TextInput mode="outlined" label="Poste *" value={item.title} onChangeText={(t) => updateExperience(index, "title", t)} style={styles.input} {...inputAppearance} />
-            <TextInput mode="outlined" label="Entreprise *" value={item.company} onChangeText={(t) => updateExperience(index, "company", t)} style={styles.input} {...inputAppearance} />
-            <TextInput mode="outlined" label="Localisation *" value={item.location} onChangeText={(t) => updateExperience(index, "location", t)} style={styles.input} {...inputAppearance} />
-            <TextInput mode="outlined" label="Date début *" value={item.start_date} onChangeText={(t) => updateExperience(index, "start_date", t)} style={styles.input} {...inputAppearance} />
-            <TextInput mode="outlined" label="Date fin *" value={item.end_date} onChangeText={(t) => updateExperience(index, "end_date", t)} style={styles.input} {...inputAppearance} />
-            <TextInput mode="outlined" label="Description *" value={item.description} onChangeText={(t) => updateExperience(index, "description", t)} style={styles.textArea} multiline {...inputAppearance} />
+        {form.experience.map((item, index) => {
+          const dateError = isDateInvalid(item.start_date, item.end_date);
+          return (
+            <View key={`experience-${index}`} style={styles.block}>
+              <TextInput
+                mode="outlined"
+                label="Poste *"
+                value={item.title}
+                onChangeText={(t) => updateExperience(index, "title", t)}
+                style={styles.input}
+                {...inputAppearance}
+              />
+              <TextInput
+                mode="outlined"
+                label="Entreprise *"
+                value={item.company}
+                onChangeText={(t) => updateExperience(index, "company", t)}
+                style={styles.input}
+                {...inputAppearance}
+              />
+              <TextInput
+                mode="outlined"
+                label="Localisation *"
+                value={item.location}
+                onChangeText={(t) => updateExperience(index, "location", t)}
+                style={styles.input}
+                {...inputAppearance}
+              />
 
-            <Button mode="text" onPress={() => removeExperience(index)} disabled={form.experience.length === 1}>
-              Remove
-            </Button>
+              <DatePickerField
+                label="Date debut *"
+                value={item.start_date}
+                onChange={(v) => updateExperience(index, "start_date", v)}
+              />
+              <DatePickerField
+                label="Date fin *"
+                value={item.end_date}
+                onChange={(v) => updateExperience(index, "end_date", v)}
+              />
 
-            {index < form.experience.length - 1 ? <Divider style={styles.divider} /> : null}
-          </View>
-        ))}
+              {dateError ? (
+                <Text style={styles.errorText}>Start date must be before end date</Text>
+              ) : null}
+
+              <TextInput
+                mode="outlined"
+                label="Description *"
+                value={item.description}
+                onChangeText={(t) => updateExperience(index, "description", t)}
+                style={styles.textArea}
+                multiline
+                {...inputAppearance}
+              />
+
+              <Button mode="text" onPress={() => removeExperience(index)} disabled={form.experience.length === 1}>
+                Remove
+              </Button>
+
+              {index < form.experience.length - 1 ? <Divider style={styles.divider} /> : null}
+            </View>
+          );
+        })}
       </Card.Content>
     </Card>
   );

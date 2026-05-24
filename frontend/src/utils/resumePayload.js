@@ -17,6 +17,7 @@ const filterStringList = (arr = []) =>
 
 export const buildResumeSavePayload = (form) => ({
   profile_summary: (form.profile_summary || "").trim() || null,
+  title: (form.title || "").trim() || null,
   education: filterObjectList(form.education),
   experience: filterObjectList(form.experience),
 

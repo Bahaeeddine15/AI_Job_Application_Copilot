@@ -2,6 +2,12 @@ from sqlalchemy.orm import Session
 from app.models.Resume import Resume
 from app.models.Users import Users
 from app.schemas.resume_schema import ResumeCreate
+from io import BytesIO
+from reportlab.lib.pagesizes import A4
+from reportlab.lib import colors
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.units import cm
 
 
 class ResumeService:
@@ -25,6 +31,7 @@ class ResumeService:
             hobbies=payload.hobbies,
             certifications=[item.model_dump() for item in payload.certifications],
             is_active=True,
+            title=payload.title
         )
 
         db.add(resume)
@@ -48,6 +55,7 @@ class ResumeService:
                 "is_active": resume.is_active,
                 "created_at": resume.created_at,
                 "updated_at": resume.updated_at,
+                "title": resume.title,
             },
         }
     
@@ -78,3 +86,131 @@ class ResumeService:
             parts.append(", ".join(resume.hard_skills))
 
         return "\n\n".join(parts)
+    
+    @staticmethod
+    def generate_resume_pdf(resume, user):
+        buffer = BytesIO()
+
+        doc = SimpleDocTemplate(
+            buffer,
+            pagesize=A4,
+            rightMargin=2 * cm,
+            leftMargin=2 * cm,
+            topMargin=2 * cm,
+            bottomMargin=2 * cm,
+        )
+        styles = getSampleStyleSheet()
+
+        title_style = ParagraphStyle(
+            "TitleStyle",
+            parent=styles["Title"],
+            fontSize=22,
+            textColor=colors.HexColor("#343434"),
+            spaceAfter=10,
+        )
+
+        section_style = ParagraphStyle(
+            "SectionStyle",
+            parent=styles["Heading2"],
+            fontSize=14,
+            textColor=colors.HexColor("#623528"),
+            spaceBefore=14,
+            spaceAfter=6,
+        )
+        body_style = ParagraphStyle(
+            "BodyStyle",
+            parent=styles["BodyText"],
+            fontSize=10,
+            leading=14,
+            textColor=colors.HexColor("#343434"),
+        )
+
+        story = []
+
+        full_name = f"{user.first_name} {user.last_name}"
+
+        story.append(Paragraph(full_name, title_style))
+
+        contact = []
+
+        if user.professional_email:
+            contact.append(user.professional_email)
+        else:
+            contact.append(user.email)
+
+        if user.phone_number:
+            contact.append(user.phone_number)
+        if user.city or user.country:
+            contact.append(", ".join(filter(None, [user.city, user.country])))
+        if user.linkedin_url:
+            contact.append(user.linkedin_url)
+
+        story.append(Paragraph(" | ".join(contact), body_style))
+        story.append(Spacer(1, 12))
+
+        if resume.profile_summary:
+            story.append(Paragraph("Profile", section_style))
+            story.append(Paragraph(resume.profile_summary, body_style))
+
+        if resume.education:
+            story.append(Paragraph("Education", section_style))
+            for item in resume.education:
+                text = f"<b>{item.get('degree', '')}</b> - {item.get('institution', '')}<br/>"
+                text += f"{item.get('field', '')} | {item.get('start_date', '')} - {item.get('end_date', '')}<br/>"
+                text += item.get("description", "")
+                story.append(Paragraph(text, body_style))
+                story.append(Spacer(1, 6))
+
+        if resume.experience:
+            story.append(Paragraph("Experience", section_style))
+            for item in resume.experience:
+                text = f"<b>{item.get('title', '')}</b> - {item.get('company', '')}<br/>"
+                text += f"{item.get('location', '')} | {item.get('start_date', '')} - {item.get('end_date', '')}<br/>"
+                text += item.get("description", "")
+                story.append(Paragraph(text, body_style))
+                story.append(Spacer(1, 6))
+
+        if resume.projects:
+            story.append(Paragraph("Projects", section_style))
+            for item in resume.projects:
+                text = f"<b>{item.get('title', '')}</b><br/>"
+                text += item.get("description", "")
+                if item.get("technologies"):
+                    text += f"<br/><i>Technologies: {item.get('technologies')}</i>"
+                story.append(Paragraph(text, body_style))
+                story.append(Spacer(1, 6))
+
+        if resume.hard_skills:
+            story.append(Paragraph("Hard Skills", section_style))
+            story.append(Paragraph(", ".join(resume.hard_skills), body_style))
+
+        if resume.soft_skills:
+            story.append(Paragraph("Soft Skills", section_style))
+            story.append(Paragraph(", ".join(resume.soft_skills), body_style))
+
+        if resume.languages:
+            story.append(Paragraph("Languages", section_style))
+            languages = [
+                f"{item.get('name', '')} ({item.get('level', '')})"
+                for item in resume.languages
+            ]
+            story.append(Paragraph(", ".join(languages), body_style))
+
+        if resume.certifications:
+            story.append(Paragraph("Certifications", section_style))
+            for item in resume.certifications:
+                text = f"<b>{item.get('name', '')}</b>"
+                if item.get("issuer"):
+                    text += f" - {item.get('issuer')}"
+                if item.get("issue_date"):
+                    text += f" ({item.get('issue_date')})"
+                story.append(Paragraph(text, body_style))
+
+        if resume.hobbies:
+            story.append(Paragraph("Hobbies", section_style))
+            story.append(Paragraph(", ".join(resume.hobbies), body_style))
+
+        doc.build(story)
+
+        buffer.seek(0)
+        return buffer

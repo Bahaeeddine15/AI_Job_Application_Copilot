@@ -1,6 +1,8 @@
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from requests import Session
 
+from fastapi.responses import Response
 from app.services.resume_service import ResumeService
 from app.services.auth_service import get_current_user
 from app.models.Users import Users
@@ -8,6 +10,11 @@ from app.database.connection import get_db
 from app.schemas.resume_schema import   ResumeCreate
 from app.services.response_service import success_response 
 from app.services.ai_service import AIService
+
+
+from app.models.Resume import Resume
+
+
 
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
@@ -77,3 +84,68 @@ async def save_resume(
 ):
     return ResumeService.save_resume(db, current_user, payload)
     
+
+@router.get("/list")
+def get_user_resumes(
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+
+    resumes = (
+        db.query(Resume)
+        .filter(Resume.user_id == current_user.id)
+        .order_by(Resume.created_at.desc())
+        .all()
+    )
+
+    return success_response(
+        data=[
+            {
+                "id": resume.id,
+                "title": resume.title or "Untitled resume",
+                "profile_summary": resume.profile_summary,
+                "is_active": resume.is_active,
+                "created_at": resume.created_at,
+                "updated_at": resume.updated_at,
+            }
+            for resume in resumes
+        ]
+    )
+
+@router.get("/{resume_id}/download")
+def download_resume(
+    resume_id: int,
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    resume = (
+        db.query(Resume)
+        .filter(
+            Resume.id == resume_id,
+            Resume.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    pdf_buffer = ResumeService.generate_resume_pdf(resume, current_user)
+    pdf_buffer.seek(0)
+    pdf_bytes = pdf_buffer.getvalue()
+
+    if not pdf_bytes:
+        raise HTTPException(status_code=500, detail="Generated PDF is empty")
+
+    safe_title = resume.title or "resume"
+    safe_title = safe_title.replace(" ", "_").lower()
+    filename = f"{safe_title}_{resume.id}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
+    )

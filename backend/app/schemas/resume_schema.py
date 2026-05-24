@@ -59,6 +59,8 @@ class ResumeCreate(BaseModel):
     hobbies: List[str] = []
     certifications: List[CertificationItem] = []
 
+    title: str
+
 
 
 # Response Schema
@@ -82,6 +84,8 @@ class ResumeResponse(BaseModel):
     certifications: List[CertificationItem]
 
     is_active: bool
+
+    title: str
 
     class Config:
         from_attributes = True  # for SQLAlchemy

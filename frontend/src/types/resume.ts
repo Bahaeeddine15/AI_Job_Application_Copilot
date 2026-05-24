@@ -35,7 +35,9 @@ export type CertificationItem = {
 };
 
 export type ResumeFormState = {
+  id: string;
   professional_email: string;
+  title: string;
   phone_number: string;
   linkedin_url: string;
   country: string;
@@ -54,4 +56,9 @@ export type ResumeFormState = {
 
   hobbies: string[];
   certifications: CertificationItem[];
+
+  created_at: string;
+  is_active: boolean;
+
+  
 };

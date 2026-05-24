@@ -145,18 +145,22 @@ class AIService:
             return score
 
     @classmethod
-    async def generate_cover_letter(cls, resume: str, job_description: str, tone:str) -> str:
+    async def generate_cover_letter(cls, resume: str, job_description: str, tone: str) -> str:
         prompt = f"""
                     You are an AI assistant for job applications.
 
-                    Write a professional, concise, tailored cover letter based on the resume and job description below.
+                    Write only the body of a cover letter.
+                    Do not include the sender address, recipient address, subject line, salutation, or closing.
+                    The result must be plain text, ready to insert inside a PDF template.
 
                     Rules:
-                    - {tone} tone
-                    - Clear and natural English
-                    - 3 to 5 paragraphs
-                    - No placeholders like [Company Name]
-                    - Ready to use
+                    - Use a {tone} tone
+                    - Write 3 to 5 concise paragraphs
+                    - Use clear, natural English
+                    - Tailor the content to the resume and job description
+                    - No markdown
+                    - No bullet points
+                    - No placeholders
 
                     Resume:
                     {resume}
@@ -164,7 +168,7 @@ class AIService:
                     Job Description:
                     {job_description}
                 """
-        return await cls._generate_text(prompt,temperature=0.7)
+        return await cls._generate_text(prompt, temperature=0.7)
     
  #helper functions for parsing Gemini responses
 
