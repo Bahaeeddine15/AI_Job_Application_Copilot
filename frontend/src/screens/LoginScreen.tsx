@@ -119,7 +119,7 @@ export default function LoginScreen({ navigation }: any) {
                 style={styles.linkContainer}
               >
                 <Text style={styles.linkText}>
-                  Don't have an account?{" "}
+                  {"Don't have an account? "}
                   <Text style={styles.linkTextHighlight}>Create Account</Text>
                 </Text>
               </TouchableOpacity>

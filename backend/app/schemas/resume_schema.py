@@ -28,6 +28,7 @@ class ProjectItem(BaseModel):
     title: str
     description: Optional[str] = None
     technologies: Optional[str] = None
+    type: Optional[str] = None  # ADD THIS LINE -> "personal" or "academic"
 
 
 class LanguageItem(BaseModel):
