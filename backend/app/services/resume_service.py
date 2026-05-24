@@ -3,10 +3,10 @@ from app.models.Resume import Resume
 from app.models.Users import Users
 from app.schemas.resume_schema import ResumeCreate
 from io import BytesIO
-from reportlab.lib.pagesizes import A4
-from reportlab.lib import colors
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, HRFlowable, KeepTogether
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 
 
@@ -91,126 +91,208 @@ class ResumeService:
     def generate_resume_pdf(resume, user):
         buffer = BytesIO()
 
+        # Adjust margins to maximize space for a single page
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=2 * cm,
-            leftMargin=2 * cm,
-            topMargin=2 * cm,
-            bottomMargin=2 * cm,
+            rightMargin=1.0 * cm,
+            leftMargin=1.0 * cm,
+            topMargin=1.0 * cm,
+            bottomMargin=1.0 * cm,
         )
+        
         styles = getSampleStyleSheet()
 
-        title_style = ParagraphStyle(
-            "TitleStyle",
-            parent=styles["Title"],
-            fontSize=22,
-            textColor=colors.HexColor("#343434"),
-            spaceAfter=10,
+        # 1. Typography Styles Definitions
+        name_style = ParagraphStyle(
+            "NameStyle",
+            parent=styles["Normal"],
+            fontSize=22, # Slightly smaller to save space
+            fontName="Helvetica-Bold",
+            textColor=colors.HexColor("#222222"),
+            alignment=1, # Center
+            spaceAfter=8, # Increased space to fix overlap
+            leading=24,   # Ensures line height doesn't overlap text below
         )
 
-        section_style = ParagraphStyle(
-            "SectionStyle",
-            parent=styles["Heading2"],
-            fontSize=14,
-            textColor=colors.HexColor("#623528"),
-            spaceBefore=14,
-            spaceAfter=6,
+        contact_style = ParagraphStyle(
+            "ContactStyle",
+            parent=styles["Normal"],
+            fontSize=9.5,
+            fontName="Helvetica",
+            textColor=colors.HexColor("#555555"),
+            alignment=1, # Center
+            spaceBefore=0,
+            spaceAfter=12,
+            leading=12, # Added leading to fix overlap
         )
+
+        section_heading_style = ParagraphStyle(
+            "SectionHeadingStyle",
+            parent=styles["Normal"],
+            fontSize=11.5,
+            fontName="Helvetica-Bold",
+            textColor=colors.HexColor("#222222"),
+            spaceBefore=8,  # Tighter spacing
+            spaceAfter=1,
+            textTransform='uppercase'
+        )
+
         body_style = ParagraphStyle(
             "BodyStyle",
-            parent=styles["BodyText"],
-            fontSize=10,
-            leading=14,
-            textColor=colors.HexColor("#343434"),
+            parent=styles["Normal"],
+            fontSize=9.5, # Slightly smaller to fit 1 page
+            fontName="Helvetica",
+            leading=12,
+            textColor=colors.HexColor("#333333"),
+        )
+        
+        bullet_style = ParagraphStyle(
+            "BulletStyle",
+            parent=body_style,
+            leftIndent=12,
+            firstLineIndent=-12,
+            spaceBefore=1,
+            spaceAfter=1,
         )
 
         story = []
 
+        # 2. Header (Name and Contact Info)
         full_name = f"{user.first_name} {user.last_name}"
-
-        story.append(Paragraph(full_name, title_style))
+        story.append(Paragraph(full_name.upper(), name_style))
 
         contact = []
-
         if user.professional_email:
             contact.append(user.professional_email)
-        else:
-            contact.append(user.email)
-
+        elif user.email:
+             contact.append(user.email)
         if user.phone_number:
             contact.append(user.phone_number)
         if user.city or user.country:
             contact.append(", ".join(filter(None, [user.city, user.country])))
         if user.linkedin_url:
-            contact.append(user.linkedin_url)
+            contact.append(user.linkedin_url) # Output actual URL instead of hardcoded word
 
-        story.append(Paragraph(" | ".join(contact), body_style))
-        story.append(Spacer(1, 12))
+        story.append(Paragraph(" • ".join(contact), contact_style))
+        
+        # Helper function to create section dividers
+        def add_section_header(title):
+            story.append(Paragraph(title, section_heading_style))
+            story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#CCCCCC"), spaceAfter=6))
 
+        # Helper function to create left-right aligned rows (e.g., Title on left, Dates on right)
+        def get_entry_header(left_text, right_text, bold_left=True):
+            left_p = Paragraph(f"<b>{left_text}</b>" if bold_left else left_text, body_style)
+            # Right align the date
+            right_style = ParagraphStyle('Right', parent=body_style, alignment=2)
+            right_p = Paragraph(f"<font color='#555555'>{right_text}</font>", right_style)
+            
+            # Use a Table to force left and right alignment
+            t = Table([[left_p, right_p]], colWidths=['75%', '25%'])
+            t.setStyle(TableStyle([
+                ('LEFTPADDING', (0,0), (-1,-1), 0),
+                ('RIGHTPADDING', (0,0), (-1,-1), 0),
+                ('BOTTOMPADDING', (0,0), (-1,-1), 0),
+                ('TOPPADDING', (0,0), (-1,-1), 0),
+            ]))
+            return t
+
+        # 3. Profile Summary
         if resume.profile_summary:
-            story.append(Paragraph("Profile", section_style))
+            add_section_header("Professional Summary")
             story.append(Paragraph(resume.profile_summary, body_style))
+            story.append(Spacer(1, 6))
 
+        # 4. Education (Moved up before Experience)
         if resume.education:
-            story.append(Paragraph("Education", section_style))
+            add_section_header("Education")
             for item in resume.education:
-                text = f"<b>{item.get('degree', '')}</b> - {item.get('institution', '')}<br/>"
-                text += f"{item.get('field', '')} | {item.get('start_date', '')} - {item.get('end_date', '')}<br/>"
-                text += item.get("description", "")
-                story.append(Paragraph(text, body_style))
-                story.append(Spacer(1, 6))
+                item_story = []
+                date_str = f"{item.get('start_date', '')} - {item.get('end_date', '')}"
+                item_story.append(get_entry_header(f"{item.get('degree', '')} in {item.get('field', '')}", date_str))
+                item_story.append(Paragraph(f"<i>{item.get('institution', '')}</i>", body_style))
+                
+                if item.get('description'):
+                    item_story.append(Paragraph(item.get('description'), body_style))
+                
+                item_story.append(Spacer(1, 4))
+                story.append(KeepTogether(item_story))
 
+        # 5. Experience (Moved down after Education)
         if resume.experience:
-            story.append(Paragraph("Experience", section_style))
+            add_section_header("Experience")
             for item in resume.experience:
-                text = f"<b>{item.get('title', '')}</b> - {item.get('company', '')}<br/>"
-                text += f"{item.get('location', '')} | {item.get('start_date', '')} - {item.get('end_date', '')}<br/>"
-                text += item.get("description", "")
-                story.append(Paragraph(text, body_style))
-                story.append(Spacer(1, 6))
+                item_story = []
+                date_str = f"{item.get('start_date', '')} - {item.get('end_date', 'Present')}"
+                item_story.append(get_entry_header(f"{item.get('title', '')} | <i>{item.get('company', '')}</i>", date_str))
+                
+                if item.get('location'):
+                    item_story.append(Paragraph(f"<font color='#777777'>{item.get('location')}</font>", body_style))
+                
+                if item.get('description'):
+                    # Split description by newlines and create bullets
+                    desc_lines = item.get('description').split('\n')
+                    for line in desc_lines:
+                        if line.strip():
+                            item_story.append(Paragraph(f"• {line.strip()}", bullet_style))
+                
+                item_story.append(Spacer(1, 4))
+                # Keep job blocks together so they don't awkwardly split across a page boundary
+                story.append(KeepTogether(item_story))
 
+
+        # 6. Projects
         if resume.projects:
-            story.append(Paragraph("Projects", section_style))
+            add_section_header("Projects")
             for item in resume.projects:
-                text = f"<b>{item.get('title', '')}</b><br/>"
-                text += item.get("description", "")
-                if item.get("technologies"):
-                    text += f"<br/><i>Technologies: {item.get('technologies')}</i>"
-                story.append(Paragraph(text, body_style))
-                story.append(Spacer(1, 6))
+                item_story = []
+                tech_str = f" ({item.get('technologies')})" if item.get('technologies') else ""
+                item_story.append(Paragraph(f"<b>{item.get('title', '')}</b>{tech_str}", body_style))
+                if item.get('description'):
+                    desc_lines = item.get('description').split('\n')
+                    for line in desc_lines:
+                        if line.strip():
+                            item_story.append(Paragraph(f"• {line.strip()}", bullet_style))
+                item_story.append(Spacer(1, 4))
+                story.append(KeepTogether(item_story))
 
-        if resume.hard_skills:
-            story.append(Paragraph("Hard Skills", section_style))
-            story.append(Paragraph(", ".join(resume.hard_skills), body_style))
+        # 7. Skills & Languages
+        if resume.hard_skills or resume.soft_skills or resume.languages:
+            add_section_header("Skills & Languages")
+            skills_story = []
+            if resume.hard_skills:
+                skills_story.append(Paragraph(f"<b>Technical Skills:</b> {', '.join(resume.hard_skills)}", body_style))
+                skills_story.append(Spacer(1, 2))
+                
+            if resume.soft_skills:
+                skills_story.append(Paragraph(f"<b>Soft Skills:</b> {', '.join(resume.soft_skills)}", body_style))
+                skills_story.append(Spacer(1, 2))
+                
+            if resume.languages:
+                languages = [f"{item.get('name', '')} ({item.get('level', '')})" for item in resume.languages]
+                skills_story.append(Paragraph(f"<b>Languages:</b> {', '.join(languages)}", body_style))
+                skills_story.append(Spacer(1, 2))
+            
+            skills_story.append(Spacer(1, 4))
+            story.append(KeepTogether(skills_story))
 
-        if resume.soft_skills:
-            story.append(Paragraph("Soft Skills", section_style))
-            story.append(Paragraph(", ".join(resume.soft_skills), body_style))
-
-        if resume.languages:
-            story.append(Paragraph("Languages", section_style))
-            languages = [
-                f"{item.get('name', '')} ({item.get('level', '')})"
-                for item in resume.languages
-            ]
-            story.append(Paragraph(", ".join(languages), body_style))
-
+        # 8. Certifications
         if resume.certifications:
-            story.append(Paragraph("Certifications", section_style))
+            add_section_header("Certifications")
+            cert_story = []
             for item in resume.certifications:
-                text = f"<b>{item.get('name', '')}</b>"
-                if item.get("issuer"):
-                    text += f" - {item.get('issuer')}"
-                if item.get("issue_date"):
-                    text += f" ({item.get('issue_date')})"
-                story.append(Paragraph(text, body_style))
+                date_str = f" ({item.get('issue_date')})" if item.get('issue_date') else ""
+                issuer_str = f" - <i>{item.get('issuer')}</i>" if item.get('issuer') else ""
+                cert_story.append(Paragraph(f"• <b>{item.get('name', '')}</b>{issuer_str}{date_str}", bullet_style))
+            cert_story.append(Spacer(1, 4))
+            story.append(KeepTogether(cert_story))
 
+        # 9. Hobbies
         if resume.hobbies:
-            story.append(Paragraph("Hobbies", section_style))
+            add_section_header("Interests")
             story.append(Paragraph(", ".join(resume.hobbies), body_style))
 
         doc.build(story)
-
         buffer.seek(0)
         return buffer
