@@ -1,58 +1,62 @@
 import React, { useCallback, useState } from "react";
-import { Platform, ScrollView, StyleSheet, View } from "react-native";
+import {
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  View,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
-import { Button, Card, Text } from "react-native-paper";
+import { Button, Card, Modal, Portal, Text } from "react-native-paper";
+
 import {
-  getLatestResume,
   getLatestJobDescription,
   analyzeApplication,
-  generateCoverLetter,
 } from "../services/ApplicationService";
-import { ResumeFormState } from "../types/resume";
+
+import { getAllResumes } from "../services/ResumeService";
 
 type AnalyzeScreenProps = {
   navigation: {
     navigate: (screen: string, params?: unknown) => void;
   };
 };
-function buildResumeText(resume: ResumeFormState | null ) {
-  if (!resume) return "";
-  let text = "";
-  if (resume.profile_summary) text += resume.profile_summary + "\n\n";
-  if (resume.education && resume.education.length)
-    text += "Éducation:\n" + resume.education.map(e => Object.values(e).join(" | ") ).join("\n") + "\n\n";
-  if (resume.experience && resume.experience.length)
-    text += "Expérience:\n" + resume.experience.map(e =>  Object.values(e).join(" | ")  ).join("\n") + "\n\n";
-  const allProjects = [
-    ...(resume.personal_projects || []),
-    ...(resume.academic_projects || []),
-  ];
-  if (allProjects.length)
-    text += "Projets:\n" + allProjects.map(e => Object.values(e).join(" | ")).join("\n") + "\n\n";
-  if (resume.hard_skills && resume.hard_skills.length)
-    text += "Hard skills: " + resume.hard_skills.join(", ") + "\n";
-  if (resume.soft_skills && resume.soft_skills.length)
-    text += "Soft skills: " + resume.soft_skills.join(", ") + "\n";
-  if (resume.languages && resume.languages.length)
-    text += "Langues:\n" + resume.languages.map(e =>
-      Object.values(e).join(" | ")
-    ).join("\n") + "\n";
-  if (resume.hobbies && resume.hobbies.length)
-    text += "Hobbies: " + resume.hobbies.join(", ") + "\n";
-  if (resume.certifications && resume.certifications.length)
-    text += "Certifications:\n" + resume.certifications.map(e =>
-      Object.values(e).join(" | ")
-    ).join("\n") + "\n";
-  return text.trim();
+
+type ResumeListItem = {
+  id: number;
+  title?: string;
+  is_active?: boolean;
+};
+
+function unwrapApiData(payload: any) {
+  return payload?.data ?? payload;
 }
+
+function normalizeResumes(payload: any): ResumeListItem[] {
+  const data = unwrapApiData(payload);
+
+  if (Array.isArray(data)) return data;
+  if (Array.isArray(data?.resumes)) return data.resumes;
+
+  return [];
+}
+
+function truncateText(text: string, maxLength = 400) {
+  if (!text) return "";
+  return text.length > maxLength ? text.slice(0, maxLength) + "..." : text;
+}
+
 export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) {
-  const [resumeText, setResumeText] = useState("");
+  const [resumes, setResumes] = useState<ResumeListItem[]>([]);
+  const [selectedResumeId, setSelectedResumeId] = useState<number | null>(null);
+
   const [jobDescription, setJobDescription] = useState("");
   const [loadingData, setLoadingData] = useState(true);
   const [loadingAnalyze, setLoadingAnalyze] = useState(false);
   const [error, setError] = useState("");
-  const [analysisId, setAnalysisId] = useState<number | null>(null);
+
+  const [resumeModalVisible, setResumeModalVisible] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -63,25 +67,31 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
           setLoadingData(true);
           setError("");
 
-          const [resumeData, jobData] = await Promise.all([
-            getLatestResume(),
+          const [resumesResponse, jobData] = await Promise.all([
+            getAllResumes(),
             getLatestJobDescription(),
           ]);
 
           if (!isActive) return;
 
-          setResumeText(buildResumeText(resumeData));
-          
-          setJobDescription(jobData?.job_description || "");
-          setAnalysisId(jobData?.id ?? null);
+          const resumesList = normalizeResumes(resumesResponse);
+          const latestJob = unwrapApiData(jobData);
 
-         
+          setResumes(resumesList);
+
+          const activeResume =
+            resumesList.find((resume) => resume.is_active) || resumesList[0];
+
+          setSelectedResumeId(activeResume?.id ?? null);
+          setJobDescription(latestJob?.job_description || "");
         } catch (e: unknown) {
           if (!isActive) return;
+
           const err = e as {
             response?: { data?: { message?: string } };
             message?: string;
           };
+
           setError(
             err?.response?.data?.message ||
               err?.message ||
@@ -100,9 +110,13 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
     }, [])
   );
 
+  const selectedResume = resumes.find(
+    (resume) => resume.id === selectedResumeId
+  );
+
   const handleAnalyze = async () => {
-    if (!resumeText.trim() || !jobDescription.trim()) {
-      setError("Missing data. Please save resume and job description first.");
+    if (!selectedResumeId || !jobDescription.trim()) {
+      setError("Please select a resume and save a job description first.");
       return;
     }
 
@@ -111,33 +125,25 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
       setError("");
 
       const analysis = await analyzeApplication({
-        resume: resumeText,
-        jobDescription,
-        analysisId,
+        resumeId: selectedResumeId,
       });
-
-      let coverLetter = "";
-      try {
-        const coverLetterData = await generateCoverLetter({
-          resume: resumeText,
-          jobDescription,
-          tone: "professional",
-          analysisId,
-        });
-        coverLetter = coverLetterData?.cover_letter || "";
-      } catch {
-        coverLetter = "";
-      }
 
       navigation.navigate("Results", {
         analysis,
-        coverLetter,
+        coverLetter: analysis?.cover_letter || "",
       });
     } catch (e: unknown) {
-      const err = e as { response?: { data?: { message?: string } }; message?: string };
+      const err = e as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+
       setError(
-        err?.response?.data?.message || err?.message || "Analysis failed. Please try again."
+        err?.response?.data?.message ||
+          err?.message ||
+          "Analysis failed. Please try again."
       );
+
       console.error(err);
     } finally {
       setLoadingAnalyze(false);
@@ -146,74 +152,187 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
 
   return (
     <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <Text style={styles.title}>Analyze Resume</Text>
-          <Text style={styles.subtitle}>
-            Data is loaded automatically from your saved database records.
-          </Text>
+      <SafeAreaView style={styles.container} edges={["bottom"]}>
+        <ScrollView showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
+            <Text style={styles.title}>Analyze Resume</Text>
 
-          <Card style={styles.card}>
-            <Card.Content>
-              <Text style={styles.cardTitle}>Latest Resume</Text>
-              <Text style={styles.previewText}>
-                {resumeText ? resumeText.slice(0, 400) + "..." : "No resume found."}
-              </Text>
+            <Text style={styles.subtitle}>
+              Select the resume you want to use, then generate a tailored
+              analysis based on your saved job description.
+            </Text>
 
-              <Text style={styles.cardTitle}>Latest Job Description</Text>
-              <Text style={styles.previewText}>
-                {jobDescription
-                  ? jobDescription.slice(0, 400) + "..."
-                  : "No job description found."}
-              </Text>
+            <Card style={styles.card}>
+              <Card.Content>
+                <Text style={styles.cardTitle}>Select Resume</Text>
 
-              {error ? <Text style={styles.errorText}>{error}</Text> : null}
+                {resumes.length ? (
+                  <>
+                    <Pressable
+                      style={styles.selectBox}
+                      onPress={() => setResumeModalVisible(true)}
+                    >
+                      <View style={styles.selectTextWrapper}>
+                        <Text style={styles.selectLabel}>Selected resume</Text>
 
-              <Button
-                mode="contained"
-                style={styles.button}
-                textColor="#D9A883"
-                onPress={handleAnalyze}
-                disabled={loadingData || loadingAnalyze || !resumeText || !jobDescription}
-              >
-                {loadingData
-                  ? "Loading data..."
-                  : loadingAnalyze
-                  ? "Analyzing..."
-                  : "Generate Results"}
-              </Button>
-            </Card.Content>
-          </Card>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+                        <Text style={styles.selectValue}>
+                          {selectedResume?.title || "Choose a resume"}
+                        </Text>
+
+                        {selectedResume?.is_active ? (
+                          <Text style={styles.activeText}>Active resume</Text>
+                        ) : null}
+                      </View>
+
+                      <Text style={styles.chevron}>⌄</Text>
+                    </Pressable>
+
+                    <Portal>
+                      <Modal
+                        visible={resumeModalVisible}
+                        onDismiss={() => setResumeModalVisible(false)}
+                        contentContainerStyle={styles.modalBox}
+                      >
+                        <Text style={styles.modalTitle}>Choose Resume</Text>
+
+                        <ScrollView style={styles.modalList}>
+                          {resumes.map((resume) => {
+                            const selected = selectedResumeId === resume.id;
+
+                            return (
+                              <Pressable
+                                key={resume.id}
+                                style={[
+                                  styles.modalOption,
+                                  selected && styles.modalOptionSelected,
+                                ]}
+                                onPress={() => {
+                                  setSelectedResumeId(resume.id);
+                                  setResumeModalVisible(false);
+                                }}
+                              >
+                                <View style={styles.modalOptionContent}>
+                                  <Text
+                                    style={[
+                                      styles.modalOptionTitle,
+                                      selected &&
+                                        styles.modalOptionTitleSelected,
+                                    ]}
+                                  >
+                                    {resume.title || `Resume #${resume.id}`}
+                                  </Text>
+
+                                  {resume.is_active ? (
+                                    <Text style={styles.modalActiveText}>
+                                      Active resume
+                                    </Text>
+                                  ) : null}
+                                </View>
+
+                                {selected ? (
+                                  <Text style={styles.checkMark}>✓</Text>
+                                ) : null}
+                              </Pressable>
+                            );
+                          })}
+                        </ScrollView>
+
+                        <Button
+                          mode="text"
+                          textColor="#623528"
+                          onPress={() => setResumeModalVisible(false)}
+                        >
+                          Cancel
+                        </Button>
+                      </Modal>
+                    </Portal>
+                  </>
+                ) : (
+                  <Text style={styles.previewText}>
+                    No resume found. Please upload a resume first.
+                  </Text>
+                )}
+
+                <Text style={styles.cardTitle}>Latest Job Description</Text>
+
+                <Text style={styles.previewText}>
+                  {jobDescription
+                    ? truncateText(jobDescription, 400)
+                    : "No job description found."}
+                </Text>
+
+                {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+                <Button
+                  mode="contained"
+                  style={styles.button}
+                  textColor="#D9A883"
+                  onPress={handleAnalyze}
+                  disabled={
+                    loadingData ||
+                    loadingAnalyze ||
+                    !selectedResumeId ||
+                    !jobDescription
+                  }
+                >
+                  {loadingData
+                    ? "Loading data..."
+                    : loadingAnalyze
+                    ? "Analyzing..."
+                    : "Generate Results"}
+                </Button>
+              </Card.Content>
+            </Card>
+          </View>
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   webPage: {
-  height: "100vh" as any,
-  overflowY: "auto" as any,
-  backgroundColor: "#F5EDE3",
-  paddingBottom: 80,
-},
+    height: "100vh" as any,
+    overflowY: "auto" as any,
+    backgroundColor: "#F5EDE3",
+    paddingBottom: 80,
+  },
 
-mobilePage: {
-  flex: 1,
-  backgroundColor: "#F5EDE3",
-},
-  container: { flex: 1, backgroundColor: "#F5EDE3" },
-  content: { padding: 24 },
-  title: { fontSize: 28, fontWeight: "600", color: "#343434", marginBottom: 8 },
-  subtitle: { fontSize: 15, color: "#956643", lineHeight: 22, marginBottom: 24 },
+  mobilePage: {
+    flex: 1,
+    backgroundColor: "#F5EDE3",
+  },
+
+  container: {
+    flex: 1,
+    backgroundColor: "#F5EDE3",
+  },
+
+  content: {
+    padding: 24,
+  },
+
+  title: {
+    fontSize: 28,
+    fontWeight: "600",
+    color: "#343434",
+    marginBottom: 8,
+  },
+
+  subtitle: {
+    fontSize: 15,
+    color: "#956643",
+    lineHeight: 22,
+    marginBottom: 24,
+  },
+
   card: {
     backgroundColor: "#FFFFFF",
     borderRadius: 16,
     borderWidth: 1,
     borderColor: "#D9A883",
   },
+
   cardTitle: {
     fontSize: 18,
     fontWeight: "600",
@@ -221,12 +340,127 @@ mobilePage: {
     marginTop: 10,
     marginBottom: 10,
   },
+
+  selectBox: {
+    borderWidth: 1,
+    borderColor: "#D9A883",
+    borderRadius: 12,
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    marginBottom: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  selectTextWrapper: {
+    flex: 1,
+  },
+
+  selectLabel: {
+    fontSize: 12,
+    color: "#956643",
+    marginBottom: 4,
+  },
+
+  selectValue: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#343434",
+  },
+
+  activeText: {
+    fontSize: 12,
+    color: "#956643",
+    marginTop: 4,
+  },
+
+  chevron: {
+    fontSize: 26,
+    color: "#623528",
+    marginLeft: 12,
+  },
+
+  modalBox: {
+    backgroundColor: "#FFFFFF",
+    marginHorizontal: 24,
+    borderRadius: 18,
+    padding: 20,
+    maxHeight: "70%",
+  },
+
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#343434",
+    marginBottom: 16,
+  },
+
+  modalList: {
+    marginBottom: 12,
+  },
+
+  modalOption: {
+    borderWidth: 1,
+    borderColor: "#D9A883",
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+    backgroundColor: "#FFFFFF",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+
+  modalOptionSelected: {
+    borderColor: "#623528",
+    backgroundColor: "#F5EDE3",
+  },
+
+  modalOptionContent: {
+    flex: 1,
+  },
+
+  modalOptionTitle: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#343434",
+  },
+
+  modalOptionTitleSelected: {
+    color: "#623528",
+  },
+
+  modalActiveText: {
+    fontSize: 12,
+    color: "#956643",
+    marginTop: 4,
+  },
+
+  checkMark: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#623528",
+    marginLeft: 12,
+  },
+
   previewText: {
     fontSize: 14,
     color: "#343434",
     lineHeight: 22,
     marginBottom: 8,
   },
-  button: { backgroundColor: "#623528", borderRadius: 8, marginTop: 12 },
-  errorText: { color: "#B00020", marginTop: 8 },
+
+  button: {
+    backgroundColor: "#623528",
+    borderRadius: 8,
+    marginTop: 12,
+  },
+
+  errorText: {
+    color: "#B00020",
+    marginTop: 8,
+    marginBottom: 8,
+  },
 });

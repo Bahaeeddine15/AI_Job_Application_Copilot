@@ -29,13 +29,12 @@ export const getLatestJobDescription = async () => {
 //  return response.data?.data;
 //};
 
-export const analyzeApplication = async ({ resume, jobDescription, analysisId }) => {
+export const analyzeApplication = async ({ resumeId }) => {
   const response = await api.post("/api/application/analyze", {
-    resume,
-    job_description: jobDescription,
-    analysis_id: analysisId ?? null,
+    resume_id: resumeId,
   });
-  return response.data?.data;
+
+  return response.data?.data ?? response.data;
 };
 
 const TOKEN_KEY = "access_token";

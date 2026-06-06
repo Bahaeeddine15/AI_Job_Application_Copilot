@@ -6,6 +6,7 @@ from app.models.Users import Users
 
 from app.services.auth_service import get_current_user
 from app.schemas.application_schema import (
+    AnalyzeRequest,
     CoverLetterRequest,
     OptimizeResumeRequest,
 )
@@ -25,27 +26,31 @@ router = APIRouter(
 
 @router.post("/analyze")
 async def analyze(
+    request: AnalyzeRequest,
     db: Session = Depends(get_db),
     current_user: Users = Depends(get_current_user),
 ):
     analysis = AnalysisService.get_latest_analysis(db, current_user.id)
 
     if not analysis:
-        return error_response("No analysis found", 404)
+        return error_response("No pending analysis found. Please add a job description first.", 404)
     
-    active_resume = ResumeService.get_active_resume(db, current_user.id)
+    resume = db.query(Resume).filter(
+                Resume.id == request.resume_id,
+                Resume.user_id == current_user.id
+            ).first()
 
-    if not active_resume:
-        return error_response("Active resume not found", 404)
+    if not resume:
+        return error_response("Selected Resume not found", 404)
     
     # Important fix:
-    # Always force the analysis to use the latest active resume
-    if analysis.status != "completed":
-        analysis.resume_id = active_resume.id
-        db.commit()
-        db.refresh(analysis)
+    
+    
+    analysis.resume_id = resume.id
+    db.commit()
+    db.refresh(analysis)
 
-    resume_text = ResumeService.build_resume_text(active_resume)
+    resume_text = ResumeService.build_resume_text(resume)
 
     result = await ApplicationService.analyze_resume(
         resume_text,

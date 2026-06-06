@@ -89,7 +89,7 @@ async def save_job_description(
     try:
         analysis = Analyses(
             user_id=current_user.id,
-            resume_id=current_resume.id,
+            resume_id=current_resume.id,  # can be modified later in the analyze endpoint when the user select the resume to use for the analysis
             job_description=payload.job_description,
             status="pending"
         )

@@ -3,9 +3,8 @@ from typing import List, Optional
 
 # 1. For the /analyze endpoint
 class AnalyzeRequest(BaseModel):
-    resume: str = Field(..., description="The full text extracted from the resume")
-    job_description: str = Field(..., description="The full text of the job posting")
-    analysis_id: Optional[int] = None
+    
+    resume_id: int = Field(..., description="The selected resume ID to use for this analysis")
 
 # 2. For the /generate-cover-letter endpoint
 class CoverLetterRequest(BaseModel):

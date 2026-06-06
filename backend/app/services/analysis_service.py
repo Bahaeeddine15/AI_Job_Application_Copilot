@@ -14,7 +14,8 @@ class AnalysisService:
     def get_latest_analysis(db, user_id):
         return (
             db.query(Analyses)
-            .filter(Analyses.user_id == user_id)
+            .filter(Analyses.user_id == user_id,
+                    Analyses.status != "completed")
             .order_by(Analyses.created_at.desc())
             .first()
         )
