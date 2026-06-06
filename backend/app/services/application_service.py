@@ -1,7 +1,6 @@
 import asyncio
 from typing import Dict
 from app.services.ai_service import AIService
-from app.services.file_service import FileService
 from app.models.Resume import Resume
 
 #this is the main service that will handle the analysis of the resume and job description.

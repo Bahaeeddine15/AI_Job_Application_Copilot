@@ -1,7 +1,7 @@
 
 import React, { useEffect, useState } from "react";
 
-import { ScrollView, StyleSheet, View, Alert } from "react-native";
+import { ScrollView, StyleSheet, View, Alert, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text, Card, Button, Chip } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -52,6 +52,7 @@ const loadResumes = async () => {
 };
 
   return (
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView
         style={{ flex: 1 }}
@@ -121,10 +122,22 @@ const loadResumes = async () => {
         ))}
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  webPage: {
+  height: "100vh" as any,
+  overflowY: "auto" as any,
+  backgroundColor: "#F5EDE3",
+  paddingBottom: 80,
+},
+
+mobilePage: {
+  flex: 1,
+  backgroundColor: "#F5EDE3",
+},
   container: {
     flex: 1,
     backgroundColor: "#F5EDE3",

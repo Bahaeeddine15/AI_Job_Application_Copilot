@@ -105,8 +105,9 @@ export default function HomeScreen({ navigation, route }: any) {
                             bannerMessage && bannerPosition === "bottom" ? { paddingBottom: 80 } : {};
 
   return (
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView
-      style={[styles.container, Platform.OS === "web" && styles.webContainer]}
+      style={[styles.container]}
       edges={["bottom"]}
     >
       {bannerMessage && bannerPosition === "top" ? (
@@ -185,14 +186,22 @@ export default function HomeScreen({ navigation, route }: any) {
         </View>
       ) : null}
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  webContainer: {
-    height: "100vh" as any,
-    overflow: "hidden" as any,
-  },
+  webPage: {
+  height: "100vh" as any,
+  overflowY: "auto" as any,
+  backgroundColor: "#F5EDE3",
+  paddingBottom: 80,
+},
+
+mobilePage: {
+  flex: 1,
+  backgroundColor: "#F5EDE3",
+},
   scroll: {
     flex: 1,
     width: "100%",

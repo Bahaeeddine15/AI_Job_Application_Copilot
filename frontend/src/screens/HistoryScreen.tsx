@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, FlatList, Pressable } from "react-native";
+import { View, StyleSheet, FlatList, Pressable, Platform } from "react-native";
 import { ActivityIndicator, Card, Text, Button } from "react-native-paper";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
@@ -249,7 +249,7 @@ export default function HistoryScreen() {
   }
 
   return (
-    <View style={styles.container}>
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
       <Text style={styles.title}>Analysis History</Text>
 
       <FlatList
@@ -310,6 +310,17 @@ export default function HistoryScreen() {
 }
 
 const styles = StyleSheet.create({
+  webPage: {
+  height: "100vh" as any,
+  overflowY: "auto" as any,
+  backgroundColor: "#F5EDE3",
+  paddingBottom: 80,
+},
+
+mobilePage: {
+  flex: 1,
+  backgroundColor: "#F5EDE3",
+},
   container: {
     flex: 1,
     backgroundColor: "#F5EDE3",

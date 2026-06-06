@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Text, TextInput } from "react-native-paper";
 import { submitJobDescription } from "../services/JobDescriptionService";
@@ -35,6 +35,7 @@ export default function JobDescriptionScreen({ navigation }: { navigation: any }
   };
 
   return (
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
@@ -82,10 +83,22 @@ export default function JobDescriptionScreen({ navigation }: { navigation: any }
         </View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  webPage: {
+  height: "100vh" as any,
+  overflowY: "auto" as any,
+  backgroundColor: "#F5EDE3",
+  paddingBottom: 80,
+},
+
+mobilePage: {
+  flex: 1,
+  backgroundColor: "#F5EDE3",
+},
   container: { flex: 1, backgroundColor: "#F5EDE3" },
   content: { padding: 24 },
   title: { fontSize: 28, fontWeight: "600", color: "#343434", marginBottom: 8 },

@@ -1,5 +1,5 @@
 import React from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Card, Divider, Text } from "react-native-paper";
 
@@ -31,6 +31,7 @@ export default function ResultsScreen({ route }: ResultsScreenProps) {
   const percentage = Math.round(matchScore * 100);
 
   return (
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
@@ -85,10 +86,22 @@ export default function ResultsScreen({ route }: ResultsScreenProps) {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  webPage: {
+    height: "100vh" as any,
+    overflowY: "auto" as any,
+    backgroundColor: "#F5EDE3",
+    paddingBottom: 80,
+  },
+
+  mobilePage: {
+    flex: 1,
+    backgroundColor: "#F5EDE3",
+  },
   container: {
     flex: 1,
     backgroundColor: "#F5EDE3",

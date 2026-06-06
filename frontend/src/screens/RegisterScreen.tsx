@@ -50,6 +50,7 @@ export default function RegisterScreen({ navigation }: any) {
   };
 
   return (
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView
         contentContainerStyle={styles.scrollContent}
@@ -178,10 +179,22 @@ export default function RegisterScreen({ navigation }: any) {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  webPage: {
+    height: "100vh" as any,
+    overflowY: "auto" as any,
+    backgroundColor: "#F5EDE3",
+    paddingBottom: 80,
+  },
+
+  mobilePage: {
+    flex: 1,
+    backgroundColor: "#F5EDE3",
+  },
   container: {
     flex: 1,
     backgroundColor: "#F5EDE3",

@@ -4,7 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { Menu, IconButton, Text } from "react-native-paper";
 import HistoryScreen from "../screens/HistoryScreen";
-import SettingsScreen from "../screens/SettingsScreen";
+import SettingsScreen from "../screens/ProfileScreen";
 import AnalyseResumeScreen from "../screens/AnalyseResumeScreen";
 import UploadResumeScreen from "../screens/UploadResumeScreen";
 import JobDescriptionScreen from "../screens/JobDescriptionScreen";
@@ -13,6 +13,7 @@ import HomeScreen from "../screens/HomeScreen";
 import LoginScreen from "../screens/LoginScreen";
 import RegisterScreen from "../screens/RegisterScreen";
 import DownloadResumeScreen from "../screens/DownloadResumeScreen";
+import ProfileScreen from "../screens/ProfileScreen";
 
 import { getUserProfile, logout } from "../services/AuthService";
 
@@ -96,7 +97,13 @@ function AppHeader({ navigation }) {
         }
         contentStyle={styles.menuContent}
       >
-        <Menu.Item title={userFullName} titleStyle={styles.menuName} disabled />
+        <Menu.Item 
+          onPress={() => {
+            setMenuVisible(false);
+            navigation.navigate("Profile");
+          }}
+          title={userFullName} 
+          titleStyle={styles.menuName}  />
         <Menu.Item
           onPress={() => {
             setMenuVisible(false);
@@ -105,14 +112,7 @@ function AppHeader({ navigation }) {
           title="History"
           titleStyle={styles.menuItem}
         />
-        <Menu.Item
-          onPress={() => {
-            setMenuVisible(false);
-            navigation.navigate("DownloadResume");
-          }}
-          title="DownloadResume"
-          titleStyle={styles.menuItem}
-        />
+        
         <Menu.Item onPress={handleLogout} title="Logout" titleStyle={styles.menuItem} />
       </Menu>
     </View>
@@ -143,6 +143,8 @@ export default function AppNavigator() {
         <Stack.Screen name="Results" component={ResultsScreen} />
         <Stack.Screen name="UploadResume" component={UploadResumeScreen} />
         <Stack.Screen name="JobDescription" component={JobDescriptionScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
+
         <Stack.Screen
           name="AnalyzeResume"
           component={AnalyseResumeScreen}

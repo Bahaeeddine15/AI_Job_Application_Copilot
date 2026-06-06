@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect } from "@react-navigation/native";
 import { Button, Card, Text } from "react-native-paper";
@@ -75,9 +75,7 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
           setJobDescription(jobData?.job_description || "");
           setAnalysisId(jobData?.id ?? null);
 
-          if (!resumeData?.content || !jobData?.job_description) {
-            setError("Missing data. Please save resume and job description first.");
-          }
+         
         } catch (e: unknown) {
           if (!isActive) return;
           const err = e as {
@@ -147,6 +145,7 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
   };
 
   return (
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
@@ -189,10 +188,22 @@ export default function AnalyseResumeScreen({ navigation }: AnalyzeScreenProps) 
         </View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  webPage: {
+  height: "100vh" as any,
+  overflowY: "auto" as any,
+  backgroundColor: "#F5EDE3",
+  paddingBottom: 80,
+},
+
+mobilePage: {
+  flex: 1,
+  backgroundColor: "#F5EDE3",
+},
   container: { flex: 1, backgroundColor: "#F5EDE3" },
   content: { padding: 24 },
   title: { fontSize: 28, fontWeight: "600", color: "#343434", marginBottom: 8 },

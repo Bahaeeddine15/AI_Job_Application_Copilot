@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, View } from "react-native";
+import { Platform, ScrollView, View, StyleSheet} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Text } from "react-native-paper";
 import { ResumeWizardProvider, useResumeWizard } from "../context/ResumeWizardContext";
@@ -294,6 +294,7 @@ function WizardContent({ navigation }: { navigation: any }) {
   };
 
   return (
+    <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView style={styles.container} edges={["bottom"]}>
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.content}>
@@ -345,8 +346,10 @@ function WizardContent({ navigation }: { navigation: any }) {
         </View>
       </ScrollView>
     </SafeAreaView>
+    </View>
   );
 }
+
 
 export default function UploadResumeScreen({ navigation }: { navigation: any }) {
   return (

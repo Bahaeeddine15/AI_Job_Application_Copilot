@@ -15,6 +15,17 @@ export const inputAppearance = {
 };
 
 export const styles = StyleSheet.create({
+  webPage: {
+    height: "100vh" as any,
+    overflowY: "auto" as any,
+    backgroundColor: "#F5EDE3",
+    paddingBottom: 80,
+  },
+
+  mobilePage: {
+    flex: 1,
+    backgroundColor: "#F5EDE3",
+  },
   container: {
     flex: 1,
     backgroundColor: "#F5EDE3",
