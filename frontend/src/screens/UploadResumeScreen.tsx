@@ -324,6 +324,7 @@ function WizardContent({ navigation }: { navigation: any }) {
               <Button
                 mode="contained"
                 style={styles.primaryButton}
+                textColor="#FFFFFF"
                 buttonColor="#623528"
                 onPress={handleNext}
                 disabled={saving}
@@ -334,6 +335,7 @@ function WizardContent({ navigation }: { navigation: any }) {
               <Button
                 mode="contained"
                 style={styles.primaryButton}
+                textColor="#FFFFFF"
                 buttonColor="#623528"
                 onPress={handleSave}
                 loading={saving}
