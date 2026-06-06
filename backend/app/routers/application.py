@@ -32,20 +32,20 @@ async def analyze(
 
     if not analysis:
         return error_response("No analysis found", 404)
+    
+    active_resume = ResumeService.get_active_resume(db, current_user.id)
 
-    resume = (
-        db.query(Resume)
-        .filter(
-            Resume.id == analysis.resume_id,
-            Resume.user_id == current_user.id
-        )
-        .first()
-    )
+    if not active_resume:
+        return error_response("Active resume not found", 404)
+    
+    # Important fix:
+    # Always force the analysis to use the latest active resume
+    if analysis.status != "completed":
+        analysis.resume_id = active_resume.id
+        db.commit()
+        db.refresh(analysis)
 
-    if not resume:
-        return error_response("Resume not found", 404)
-
-    resume_text = ResumeService.build_resume_text(resume)
+    resume_text = ResumeService.build_resume_text(active_resume)
 
     result = await ApplicationService.analyze_resume(
         resume_text,
