@@ -4,8 +4,7 @@ import { Platform } from "react-native";
 // Adapte selon plateforme
 export const API_URL =
   Platform.OS === "android"
-  
-    ? "http://192.168.100.10" // Android 
+    ? "http://192.168.100.6:8000" // Android 
     : Platform.OS === "ios"
     ? "http://172.20.10.2:8000" // iPhone physique (IP de ton PC)
     : "http://127.0.0.1:8000"; // Web local

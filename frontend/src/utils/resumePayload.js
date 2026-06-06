@@ -1,16 +1,12 @@
 const clean = (v) => (typeof v === "string" ? v.trim() : v);
 
 const cleanObject = (obj) =>
-  Object.fromEntries(
-    Object.entries(obj).map(([k, v]) => [k, clean(v)])
-  );
+  Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, clean(v)]));
 
 const nonEmptyString = (v) => typeof v === "string" && v.trim().length > 0;
 
 const filterObjectList = (arr = []) =>
-  arr
-    .map(cleanObject)
-    .filter((obj) => Object.values(obj).some(nonEmptyString));
+  arr.map(cleanObject).filter((obj) => Object.values(obj).some(nonEmptyString));
 
 const filterStringList = (arr = []) =>
   arr.map((v) => (v || "").trim()).filter((v) => v.length > 0);
@@ -21,10 +17,16 @@ export const buildResumeSavePayload = (form) => ({
   education: filterObjectList(form.education),
   experience: filterObjectList(form.experience),
 
-  // merge both project sections because backend has one `projects` array
+  // merge both project sections and tag them with their respective type
   projects: [
-    ...filterObjectList(form.personal_projects || []),
-    ...filterObjectList(form.academic_projects || []),
+    ...filterObjectList(form.personal_projects || []).map((p) => ({
+      ...p,
+      type: "personal",
+    })),
+    ...filterObjectList(form.academic_projects || []).map((p) => ({
+      ...p,
+      type: "academic",
+    })),
   ],
 
   hard_skills: filterStringList(form.hard_skills),

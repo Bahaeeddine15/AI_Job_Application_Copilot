@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ScrollView, View, Pressable } from "react-native";
+import { ScrollView, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Text } from "react-native-paper";
 import { ResumeWizardProvider, useResumeWizard } from "../context/ResumeWizardContext";
@@ -142,12 +142,22 @@ const mapExperience = (items: unknown) => {
   }));
 };
 
-const mapProjects = (items: unknown) => {
+const mapProjects = (items: unknown, targetType: string) => {
   if (!Array.isArray(items) || items.length === 0) return [emptyProject];
-  return items.map((i: any) => ({
+
+  // Filter by type: defaulting old untagged projects to 'personal'
+  const filtered = items.filter((i: any) => {
+    const pType = i?.type || "personal";
+    return pType === targetType;
+  });
+
+  if (filtered.length === 0) return [emptyProject];
+
+  return filtered.map((i: any) => ({
     title: toStr(i?.title),
     description: toStr(i?.description),
     technologies: toStr(i?.technologies),
+    type: toStr(i?.type),
   }));
 };
 
@@ -191,8 +201,8 @@ function WizardContent({ navigation }: { navigation: any }) {
           profile_summary: toStr(latest.profile_summary),
           education: mapEducation(latest.education),
           experience: mapExperience(latest.experience),
-          personal_projects: mapProjects(latest.projects),
-          academic_projects: [emptyProject],
+          personal_projects: mapProjects(latest.projects, "personal"),
+          academic_projects: mapProjects(latest.projects, "academic"),
           hard_skills: mapStringList(latest.hard_skills, [""]),
           soft_skills: mapStringList(latest.soft_skills, [""]),
           languages: mapLanguages(latest.languages),
