@@ -10,7 +10,10 @@ from app.models.Analyses import Analyses
 from app.services.auth_service import get_current_user
 from app.services.analysis_service import AnalysisService
 from app.services.resume_service import ResumeService
-from requests import Session
+from fastapi.responses import Response
+
+from sqlalchemy.orm import Session
+
 
 router = APIRouter(
     prefix="/api/analysis",
@@ -151,4 +154,45 @@ async def get_history(
             "total": total,
             "pages": (total + limit - 1) // limit,
         }
+    )
+
+@router.get("/{analysis_id}/cover-letter/download")
+def download_cover_letter(
+    analysis_id: int,
+    db: Session = Depends(get_db),
+    current_user: Users = Depends(get_current_user),
+):
+    analysis = (
+        db.query(Analyses)
+        .filter(
+            Analyses.id == analysis_id,
+            Analyses.user_id == current_user.id,
+        )
+        .first()
+    )
+
+    if not analysis:
+        return error_response("Analysis not found", 404)
+        
+
+    if not analysis.cover_letter:
+        return error_response("No cover letter found for this analysis", 404)
+        
+
+    pdf_buffer = AnalysisService.generate_cover_letter_pdf(
+        analysis,
+        current_user
+    )
+
+    pdf_bytes = pdf_buffer.getvalue()
+
+    filename = f"cover_letter_{analysis.id}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'attachment; filename="{filename}"',
+            "Content-Length": str(len(pdf_bytes)),
+        },
     )

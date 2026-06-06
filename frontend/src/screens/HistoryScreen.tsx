@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { View, StyleSheet, FlatList, Pressable, Platform } from "react-native";
+import { View, StyleSheet, FlatList, Pressable, Platform, Alert } from "react-native";
 import { ActivityIndicator, Card, Text, Button } from "react-native-paper";
 import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import api from "../services/api";
 import { getUserProfile } from "../services/AuthService";
+import { downloadCoverLetterPdf } from "../services/ApplicationService";
 
 type AnalysisItem = {
   id: number;
@@ -27,118 +28,7 @@ type UserProfile = {
   country?: string;
 };
 
-// helpers: capitalization & localization
-const capitalizeName = (value?: string) => {
-  if (!value?.trim()) return "";
-  return value
-    .trim()
-    .split(/\s+/)
-    .map((part) => {
-      const lower = part.toLowerCase();
-      return lower.charAt(0).toUpperCase() + lower.slice(1);
-    })
-    .join(" ");
-};
 
-const localize = (_lang: string) => {
-  return {
-    subjectLabel: "Objet :",
-    closing: "Cordialement,",
-    postalPlaceholder: "Code postal + Ville",
-    applicationFor: "Candidature pour le poste",
-  };
-};
-
-const escapeHtml = (value: string) =>
-  value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-// build HTML using parsed cover letter JSON when available
-const buildCoverLetterHtml = (item: AnalysisItem, profile: UserProfile | null) => {
-  let parsed: { subject?: string; body?: string; language?: string } | null = null;
-  const raw = item.cover_letter || "";
-  try {
-    const maybe = JSON.parse(raw);
-    if (maybe && typeof maybe === "object" && (maybe.subject || maybe.body || maybe.language)) {
-      parsed = maybe;
-    }
-  } catch {
-    parsed = null;
-  }
-
-  const lang = (parsed?.language || "fr").toLowerCase().startsWith("fr") ? "fr" : "fr";
-  const loc = localize(lang);
-
-  const firstName = capitalizeName(profile?.first_name);
-  const lastName = capitalizeName(profile?.last_name);
-  const fullName = [firstName, lastName].filter(Boolean).join(" ") || "[Votre nom complet]";
-
-  const streetAddress = "[Votre adresse]";
-  const postalCodeCity = profile?.city ? profile.city : loc.postalPlaceholder;
-  const email = profile?.professional_email || "[Votre adresse e-mail]";
-  const phone = profile?.phone_number || "[Votre numéro de téléphone]";
-
-  const companyName = "[Nom de l'entreprise]";
-  const hiringManagerName = "[Employeur / Nom du recruteur]";
-  const hiringManagerPosition = "[Poste du recruteur]";
-  const companyAddress = "[Adresse de l'entreprise]";
-
-  const subject = parsed?.subject ? parsed.subject.trim() : `${loc.applicationFor} ${"[Intitulé du poste]"}`;
-
-  let bodyText = parsed?.body ? parsed.body.trim() : raw.trim();
-  if (!bodyText) bodyText = "[Le corps de la lettre n'est pas disponible]";
-
-  const paragraphs = bodyText
-    .split(/\n\s*\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  return `
-    <html>
-      <head>
-        <meta charset="utf-8" />
-        <style>
-          body { font-family: Arial, sans-serif; padding: 40px; color: #222; line-height: 1.5; font-size: 14px; }
-          .block { margin-bottom: 16px; }
-          .subject { margin: 16px 0; font-weight: 700; }
-          .body { text-align: justify; }
-          .paragraph { margin: 0 0 12px 0; }
-          .closing { margin-top: 16px; }
-          .signature { margin-top: 12px; font-weight: 700; }
-        </style>
-      </head>
-      <body>
-        <div class="block">
-          <div>${escapeHtml(fullName)}</div>
-          <div>${escapeHtml(streetAddress)}</div>
-          <div>${escapeHtml(postalCodeCity)}</div>
-          <div>${escapeHtml(email)}</div>
-          <div>${escapeHtml(phone)}</div>
-        </div>
-
-        <div class="block">
-          <div>${escapeHtml(companyName)}</div>
-          <div>${escapeHtml(hiringManagerName)}</div>
-          <div>${escapeHtml(hiringManagerPosition)}</div>
-          <div>${escapeHtml(companyAddress)}</div>
-        </div>
-
-        <div class="subject">
-          ${escapeHtml(loc.subjectLabel)} ${escapeHtml(subject)}
-        </div>
-
-        <div class="body">
-          ${paragraphs.map((p) => `<p class="paragraph">${escapeHtml(p)}</p>`).join("")}
-        </div>
-
-        <div class="closing">${escapeHtml(loc.closing)}</div>
-        <div class="signature">${escapeHtml(fullName)}</div>
-      </body>
-    </html>
-  `;
-};
 
 export default function HistoryScreen() {
   const [items, setItems] = useState<AnalysisItem[]>([]);
@@ -190,28 +80,24 @@ export default function HistoryScreen() {
     }
   };
 
-  const downloadCoverLetterPdf = async (item: AnalysisItem) => {
+  const handleDownloadCoverLetter = async (item: AnalysisItem) => {
     if (!item.cover_letter?.trim()) return;
 
     try {
-      setDownloadingId(item.id);
-
-      const html = buildCoverLetterHtml(item, profile);
-      const { uri } = await Print.printToFileAsync({ html });
-
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          mimeType: "application/pdf",
-          dialogTitle: "Download cover letter PDF",
-        });
-      } else {
-        setError("Sharing is not available on this device.");
+        setDownloadingId(item.id);
+    
+        await downloadCoverLetterPdf(
+          item.id,
+          "cover_letter"
+        );
+    
+        console.log("cover letter  downloaded:", item.id);
+      } catch (error) {
+        console.log("Download error:", error);
+        Alert.alert("Download failed", "Could not download the cover letter.");
+      } finally {
+        setDownloadingId(null);
       }
-    } catch (e: any) {
-      setError(e?.message || "Failed to generate PDF.");
-    } finally {
-      setDownloadingId(null);
-    }
   };
 
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -287,7 +173,7 @@ export default function HistoryScreen() {
                 style={styles.downloadButton}
                 buttonColor="#623528"
                 textColor="#F5EDE3"
-                onPress={() => downloadCoverLetterPdf(item)}
+                onPress={() => handleDownloadCoverLetter(item)}
                 disabled={!item.cover_letter || downloadingId === item.id || profileLoading}
               >
                 {downloadingId === item.id ? "Preparing PDF..." : "Download Cover Letter PDF"}
