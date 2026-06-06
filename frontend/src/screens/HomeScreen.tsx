@@ -134,8 +134,8 @@ export default function HomeScreen({ navigation, route }: any) {
           <Text style={styles.heroLabel}>Ready to begin?</Text>
           <Text style={styles.heroTitle}>Build a stronger application</Text>
           <Text style={styles.heroText}>
-            First upload your resume, 
-            then add the job description to generate a tailored analysis and improve your application.
+            Upload your resume, add the target job description, and get tailored
+            feedback to improve your chances.
           </Text>
         </View>
 
