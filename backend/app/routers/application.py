@@ -31,7 +31,7 @@ async def analyze(
     analysis = AnalysisService.get_latest_analysis(db, current_user.id)
 
     if not analysis:
-        raise HTTPException(status_code=404, detail="No analysis found")
+        return error_response("No analysis found", 404)
 
     resume = (
         db.query(Resume)
@@ -43,7 +43,7 @@ async def analyze(
     )
 
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        return error_response("Resume not found", 404)
 
     resume_text = ResumeService.build_resume_text(resume)
 
@@ -64,6 +64,7 @@ async def analyze(
 
     return success_response(data=result)
 
+#
 @router.post("/generate-cover-letter")
 async def generate_cover_letter_endpoint(
     request: CoverLetterRequest,
@@ -96,8 +97,8 @@ async def generate_cover_letter_endpoint(
     except Exception as e:
         msg = str(e)
         if "PROVIDER_429" in msg or "429" in msg or "RESOURCE_EXHAUSTED" in msg:
-            raise HTTPException(status_code=429, detail=f"Cover letter failed: {msg}")
-        raise HTTPException(status_code=503, detail=f"Cover letter failed: {msg}")
+            return error_response(f"Cover letter failed: {msg}", 429)
+        return error_response(f"Cover letter failed: {msg}", 503)
 
 
 @router.post("/optimize-resume")
@@ -112,4 +113,4 @@ async def optimize_resume_endpoint(request: OptimizeResumeRequest):
             "Resume optimization suggestions generated",
         )
     except Exception as e:
-        raise HTTPException(status_code=503, detail=f"Optimize failed: {str(e)}")
+        return error_response(f"Optimize failed: {str(e)}", 503)

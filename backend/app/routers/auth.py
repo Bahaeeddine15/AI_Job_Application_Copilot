@@ -16,6 +16,10 @@ from app.services.auth_service import get_current_user
 
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
+# we define the request models for the auth endpoints using pydantic BaseModel.
+#  these models will be used to validate the request payload and to generate the API documentation.
+#  we have a RegisterRequest model for the registration endpoint, a LoginRequest model for the login endpoint, and an UpdateProfileRequest model for the profile update endpoint. 
+# each model has the required fields for that endpoint and optional fields where applicable.
 class RegisterRequest(BaseModel):
     first_name: str
     last_name: str
@@ -33,6 +37,7 @@ class UpdateProfileRequest(BaseModel):
     country: Optional[str] = None
     city: Optional[str] = None
 
+# register endpoint for creating a user acc  
 @router.post("/register", response_model=dict)
 def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     existing = Users.get_by_email(db, payload.email)
@@ -42,6 +47,9 @@ def register_user(payload: RegisterRequest, db: Session = Depends(get_db)):
     user = Users.create(db, email=payload.email, hashed_password=hashed, first_name=payload.first_name, last_name=payload.last_name)
     return success_response(data={"message": "User registered successfully", "user_id": getattr(user, "id", None)})
 
+# login endpoint for getting the JWT token for the session 
+#the client provide the email and password that will get verified 
+#if valid we create a JWT token  that will be sent to the client 
 @router.post("/login", response_model=dict)
 async def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
     user = Users.get_by_email(db, payload.email)
@@ -56,14 +64,13 @@ async def login_user(payload: LoginRequest, db: Session = Depends(get_db)):
 def token_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = Users.get_by_email(db, form_data.username)
     if not user or not verify_password(form_data.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        return JSONResponse(content=error_response("Incorrect username or password", code=401), status_code=401)
+        
     token = create_access_token(subject=user.email)
     return {"access_token": token, "token_type": "bearer"}
 
+
+# here we have the profile update and get endpoints that require authentication. we use the get_current_user dependency to get the current user from the token and then we can update or return the user profile information based on the request.
 @router.put("/profile", response_model=dict)
 def update_profile(
     payload: UpdateProfileRequest,
@@ -113,17 +120,4 @@ def get_profile(
         }
     )
 
-# @router.post("/login")
-# def login_user(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-#     user = Users.get_by_email(db, form_data.username)  # username field will contain email
-#     if not user or not verify_password(form_data.password, user.hashed_password):
-#         raise HTTPException(
-#             status_code=status.HTTP_401_UNAUTHORIZED,
-#             detail="Incorrect username or password",
-#             headers={"WWW-Authenticate": "Bearer"},
-#         )
 
-#     token = create_access_token(
-#         subject=user.email,
-#     )
-#     return {"access_token": token, "token_type": "bearer"}

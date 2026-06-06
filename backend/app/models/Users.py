@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import Column, Integer, String, DateTime, func
 from app.database.base import Base
 
+# this is the user model where we will store the user data for each user.
 
 class Users(Base):
     __tablename__ = "users"
@@ -29,7 +30,7 @@ class Users(Base):
             f"<Users(id={self.id}, first_name='{self.first_name}', "
             f"last_name='{self.last_name}', email='{self.email}')>"
         )
-
+     # we will use this property to get the hashed password when we need to verify the password during login.
     @property
     def hashed_password(self) -> str:
         return self.password_hash
@@ -38,6 +39,7 @@ class Users(Base):
     def get_by_email(cls, db: Session, email: str) -> Optional["Users"]:
         return db.query(cls).filter(cls.email == email).first()
 
+    # this method will be used to create a new user in the database. We will use this method in the registration endpoint.
     @classmethod
     def create(
         cls,

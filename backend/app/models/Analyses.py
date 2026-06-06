@@ -2,7 +2,10 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Float, Tex
 from sqlalchemy.sql import func
 from .Users import Base
 
-
+#this is the analyses model where we will store the analysis data for each user.
+#  Each analysis will be linked to a specific resume and job description.
+#  We will store the match score, matched skills, missing skills, and the generated cover letter for each analysis.
+#  We will also store the created_at timestamp and the status of the analysis (pending, completed, failed).
 class Analyses(Base):
     __tablename__ = "analyses"
 

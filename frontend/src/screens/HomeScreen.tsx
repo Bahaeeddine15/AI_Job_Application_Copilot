@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
+import { ScrollView, StyleSheet, View, TouchableOpacity, Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Text } from "react-native-paper";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
@@ -105,7 +105,10 @@ export default function HomeScreen({ navigation, route }: any) {
                             bannerMessage && bannerPosition === "bottom" ? { paddingBottom: 80 } : {};
 
   return (
-    <SafeAreaView style={styles.container} edges={["bottom"]}>
+    <SafeAreaView
+      style={[styles.container, Platform.OS === "web" && styles.webContainer]}
+      edges={["bottom"]}
+    >
       {bannerMessage && bannerPosition === "top" ? (
         <View style={styles.successBannerTop}>
           <Text style={styles.successBannerText}>{bannerMessage}</Text>
@@ -113,9 +116,10 @@ export default function HomeScreen({ navigation, route }: any) {
       ) : null}
 
       <ScrollView
-        style={{ flex: 1 }}
+        style={styles.scroll}
         contentContainerStyle={[styles.content, contentExtraStyle]}
         showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.welcomeSection}>
           <Text style={styles.greeting}>Hi, {fullName}.</Text>
@@ -185,6 +189,14 @@ export default function HomeScreen({ navigation, route }: any) {
 }
 
 const styles = StyleSheet.create({
+  webContainer: {
+    height: "100vh" as any,
+    overflow: "hidden" as any,
+  },
+  scroll: {
+    flex: 1,
+    width: "100%",
+  },
   container: {
     flex: 1,
     backgroundColor: "#F5EDE3",
@@ -233,9 +245,8 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 24,
-    paddingBottom: 48,
+    paddingBottom: 80,
     flexGrow: 1,
-    minHeight: "100%",
     paddingTop: 36,
   },
   welcomeSection: {

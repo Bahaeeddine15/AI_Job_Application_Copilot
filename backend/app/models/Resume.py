@@ -2,7 +2,10 @@ from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Boolean, f
 from sqlalchemy.dialects.postgresql import JSONB
 from app.database.base import Base
 
-
+# this is the resume model where we will store the resume data for each user. 
+# Each user can have multiple resumes, but only one active resume at a time.
+#  The resume will contain the profile summary, education, experience, projects, hard skills, soft skills, languages, hobbies, and certifications. 
+# We will also store the title of the resume and the created_at and updated_at timestamps.
 class Resume(Base):
     __tablename__ = "resumes"
 

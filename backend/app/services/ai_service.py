@@ -10,15 +10,14 @@ from google.genai import types
 from groq import AsyncGroq
 from typing import Any, Dict, Optional
 
-
+#this where we implement all fct that interacts wd the ai model (Groq in our case).
 class AIService:
-    # Initialize the Gemini model once for the entire class to reuse across methods
-    # client = genai.Client(api_key=settings.GEMINI_API_KEY.get_secret_value())
-    # model_name = "gemini-2.5-flash"
+    #initialize the groq client nd d mode name from the settings file, we will use these to make API calls to Groq in the class methods below.
     client = AsyncGroq(api_key=settings.GROQ_API_KEY.get_secret_value())
     model_name = settings.GROQ_MODEL
     
-   
+   # this method will send the ai our job description and ask to extract keywords from it 
+   #this method is used in the analyse endpoint so later we will use the extracted keywords to set the matched skills 
     @classmethod
     async def extract_keywords(cls, job_description: str) -> List[str]:
         prompt = f"""
@@ -37,7 +36,7 @@ class AIService:
                 """
         text = await cls._generate_text(prompt,temperature=0.0) # api call, here cls refers to the class itself which gives us access to the model nd other class methods
         return cls._extract_json_array(text) # we expect the model to return a text that contains a JSON array of keywords, we use the helper function _extract_json_array to parse that text and get the list of keywords as a python list
-
+    #same as above but this time we send the resume 
     @classmethod
     async def extract_skills(cls, resume: str) -> List[str]:
      prompt = f"""
@@ -63,12 +62,14 @@ class AIService:
                 """
      text = await cls._generate_text(
         prompt,
-        temperature=0.0,
+        temperature=0.0,#temperature are used for controlling the creativity of the model output, we set it to 0.0 because we want a deterministic output for the skills extraction, we want the model to extract only the skills that are explicitly mentioned in the resume without any variation or creativity.
         response_format=None,
     )
      skills = cls._extract_json_array(text)
 
      # post-normalize & dedupe (defensive)
+     #here we try to normalize the skills by stripping extra whitespace and standardizing capitalization, we also remove duplicates while preserving order.
+     #  This is a defensive step to ensure that even if the model output has some inconsistencies in formatting, we still get a clean list of skills.
      normalized = []
      seen = set()
      for s in skills:
@@ -81,7 +82,8 @@ class AIService:
     
 
 
-     return cls._extract_json_array(text)
+     # in this method we ask the ai the calculate the similarity score between the resume nd job desc
+     #we give the ai a clear propmt with strict rules on how to calculate the score 
     @classmethod
     async def similarity_score(cls, resume: str, job_description: str) -> float:
         prompt = f"""
@@ -143,7 +145,8 @@ class AIService:
             if score < 0 or score > 1:
                 raise ValueError(f"Could not parse valid score from response: {text}")
             return score
-
+    #this one is for cover letter generation based on the resume and job desc
+    #we give the ai a clear prompt with rules and a tone parameter to control the style 
     @classmethod
     async def generate_cover_letter(cls, resume: str, job_description: str, tone: str) -> str:
         prompt = f"""
@@ -170,8 +173,7 @@ class AIService:
                 """
         return await cls._generate_text(prompt, temperature=0.7)
     
- #helper functions for parsing Gemini responses
-
+    #here we ask the ai for improvements suggestions for resume content for better matching wd the job description
     @classmethod
     async def optimize_resume_content(cls, resume: str, job_description: str) -> List[str]:
         prompt = f"""
@@ -197,6 +199,10 @@ class AIService:
                 """
         text = await cls._generate_text(prompt,temperature=0.1)
         return cls._extract_json_array(text)
+    
+ #helper functions for parsing Gemini responses
+
+    
 
     @staticmethod
     def _extract_json_array(text: str) -> List[str]:
@@ -266,7 +272,7 @@ class AIService:
                     response_format=response_format,  # e.g. {"type": "json_object"}
                 )
 
-                text = (response.choices[0].message.content or "").strip()
+                text = (response.choices[0].message.content or "").strip() # response is expected to have a choices list. choices[0] is the first choice returned by the model
                 if not text:
                     raise ValueError("Empty response from Groq.")
                 return text
@@ -306,13 +312,5 @@ class AIService:
 
                 raise Exception(f"PROVIDER_ERROR: {msg}")
 
-# --- Internal Helper Functions (Keep these below the class) ---
 
-
-
-def compare_skills(skills: List[str], job_description: str) -> Tuple[List[str], List[str]]:
-    job_keywords = job_description.lower().split()
-    matched = [skill for skill in skills if skill.lower() in job_keywords]
-    missing = [skill for skill in skills if skill.lower() not in job_keywords]
-    return matched, missing
 

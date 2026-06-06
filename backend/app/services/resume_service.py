@@ -65,7 +65,8 @@ class ResumeService:
             Resume.user_id == user_id,
             Resume.is_active == True
         ).first()
-    
+    #this is a helper method to build the resume text that will be sent to the ai model 
+
     @staticmethod
     def build_resume_text(resume: Resume) -> str:
         parts = []
@@ -84,13 +85,18 @@ class ResumeService:
 
         if resume.hard_skills:
             parts.append(", ".join(resume.hard_skills))
+        if resume.soft_skills:
+            parts.append(", ".join(resume.soft_skills))
 
         return "\n\n".join(parts)
     
+
+    #this method is responsible for resume pdf generation using the reportlab library
     @staticmethod
     def generate_resume_pdf(resume, user):
-        buffer = BytesIO()
-
+        buffer = BytesIO() # we will write the pdf file to this buffer and then return it as a response to the client. we use BytesIO because it is an in-memory stream for binary data, so we can create the pdf file in memory without having to save it to disk.
+        
+        # we use reportlab to generate the pdf file. we create a SimpleDocTemplate and then build the pdf using the story list which contains the paragraphs and spacers. we use different styles for the title, section headings, and body text to make the resume look nice and organized.
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
@@ -99,9 +105,10 @@ class ResumeService:
             topMargin=2 * cm,
             bottomMargin=2 * cm,
         )
-        styles = getSampleStyleSheet()
-
-        title_style = ParagraphStyle(
+        styles = getSampleStyleSheet() # this is a sample stylesheet that comes with reportlab. we will use it as a base and then create our own styles for the title, section headings, and body text.
+        
+        #we create a custom style for different parts of the resume using the ParagraphStyle class.
+        title_style = ParagraphStyle( 
             "TitleStyle",
             parent=styles["Title"],
             fontSize=22,
@@ -128,7 +135,7 @@ class ResumeService:
         story = []
 
         full_name = f"{user.first_name} {user.last_name}"
-
+        #Paragraph is a class from reportlab that represents a paragraph of text in the pdf. we create a Paragraph for the full name of the user using the title style and add it to the story list. we do the same for the contact information and other sections of the resume.
         story.append(Paragraph(full_name, title_style))
 
         contact = []
@@ -210,7 +217,7 @@ class ResumeService:
             story.append(Paragraph("Hobbies", section_style))
             story.append(Paragraph(", ".join(resume.hobbies), body_style))
 
-        doc.build(story)
+        doc.build(story) # we finally build the pdf doc using the story list which contains all the paragraphs based on the resume data 
 
-        buffer.seek(0)
+        buffer.seek(0) # we move the buffer cursor to the beginning of the file so when we return it as a response it will start reading from the beginning of the pdf file.
         return buffer

@@ -1,3 +1,5 @@
+# This file contains helper functions to create standardized API responses for success and error cases.
+
 def success_response(data: dict, message: str = "") -> dict:
     """
     Return a standardized success response.

@@ -3,7 +3,9 @@ from pathlib import Path
 from pydantic import Field, SecretStr, ValidationError
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
+#this is the settings file where we will store all the configuration for the application. 
+# We will use pydantic to validate the settings and load them from a .env file. 
+# We will also use SecretStr to store sensitive information like API keys and JWT secret key.
 class Settings(BaseSettings):
     app_name: str = "AI Job Copilot"
     version: str = "0.1.0"

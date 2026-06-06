@@ -4,7 +4,10 @@ from app.services.ai_service import AIService
 from app.services.file_service import FileService
 from app.models.Resume import Resume
 
-
+#this is the main service that will handle the analysis of the resume and job description.
+#  It will call the AIService to get the extracted skills, keywords, similarity score, improvement suggestions, and cover letter.
+#  It will also compare the extracted skills with the job keywords to determine which skills are matched and which are missing.
+#  This service is used in the analyze endpoint of the application router.
 class ApplicationService:
 
     @staticmethod

@@ -8,7 +8,7 @@ from app.services.auth_service import get_current_user
 from app.models.Users import Users
 from app.database.connection import get_db
 from app.schemas.resume_schema import   ResumeCreate
-from app.services.response_service import success_response 
+from app.services.response_service import error_response, success_response 
 from app.services.ai_service import AIService
 
 
@@ -19,6 +19,7 @@ from app.models.Resume import Resume
 
 router = APIRouter(prefix="/api/resume", tags=["Resume"])
 
+#this endpoint is for getting the latest (active) resume 
 @router.get("/latest")
 async def get_latest_resume(
     db: Session = Depends(get_db),
@@ -27,15 +28,10 @@ async def get_latest_resume(
     latest_resume = ResumeService.get_active_resume(db, current_user.id)
 
     if not latest_resume:
-        return {
-            "status": "success",
-            "data": None,
-            "message": "No resume found"
-        }
+        return error_response("No resume found", 404)
 
-    return {
-        "status": "success",
-        "data": {
+    return success_response(
+        data={
             "id": latest_resume.id,
             "user_id": latest_resume.user_id,
             "profile_summary": latest_resume.profile_summary,
@@ -50,8 +46,8 @@ async def get_latest_resume(
             "is_active": latest_resume.is_active,
             "created_at": latest_resume.created_at,
             "updated_at": latest_resume.updated_at
-        }
-    }
+        })
+    
 
 @router.post("/extract-skills")
 async def extract_skills(
@@ -62,17 +58,17 @@ async def extract_skills(
         resume = ResumeService.get_active_resume(db, current_user.id)
 
         if not resume:
-            raise HTTPException(status_code=404, detail="No active resume found")
+            return error_response("No active resume found", 404)
+        
 
         resume_text = ResumeService.build_resume_text(resume)
 
         skills = await AIService.extract_skills(resume_text)
 
-        return {"status": "success", "data": {"skills": skills}}
+        return success_response(data={"skills": skills})
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    
+        return error_response(f"Error extracting skills: {str(e)}", 500)
 
 
 #this endpoint is for saving the validated resume text to the database after extraction and any necessary cleaning. It assumes a user_id of 1 for now, but this should be replaced with the actual logged-in user's ID in a real application.
@@ -112,6 +108,7 @@ def get_user_resumes(
         ]
     )
 
+# this endpoint is for downloading the resume as a PDF file. It generates the PDF on the fly using the resume data and returns it as a streaming response with the appropriate headers for file download.
 @router.get("/{resume_id}/download")
 def download_resume(
     resume_id: int,
@@ -128,14 +125,15 @@ def download_resume(
     )
 
     if not resume:
-        raise HTTPException(status_code=404, detail="Resume not found")
+        return error_response("Resume not found", 404)
 
     pdf_buffer = ResumeService.generate_resume_pdf(resume, current_user)
     pdf_buffer.seek(0)
     pdf_bytes = pdf_buffer.getvalue()
 
     if not pdf_bytes:
-        raise HTTPException(status_code=500, detail="Generated PDF is empty")
+        return error_response("Generated PDF is empty", 500)
+        
 
     safe_title = resume.title or "resume"
     safe_title = safe_title.replace(" ", "_").lower()
