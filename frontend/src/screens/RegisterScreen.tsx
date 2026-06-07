@@ -1,8 +1,9 @@
 import React, { useState } from "react";
-import { ScrollView, StyleSheet, View, TouchableOpacity } from "react-native";
+import { ScrollView, StyleSheet, View, TouchableOpacity , Platform } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Button, Card, Text, TextInput } from "react-native-paper";
 import { registerUser } from "../services/AuthService";
+
 
 export default function RegisterScreen({ navigation }: any) {
   const [firstName, setFirstName] = useState("");
