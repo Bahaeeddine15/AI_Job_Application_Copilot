@@ -42,7 +42,7 @@ export default function PersonalStep() {
         <Text style={styles.sectionTitle}>Personal Information</Text>
         <TextInput
           mode="outlined"
-          label="Resume title"
+          label="Resume title *"
           value={form.title}
           onChangeText={(value) => setForm((prev) => ({...prev, title: value, }))}
           style={styles.input}
