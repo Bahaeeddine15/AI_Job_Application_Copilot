@@ -22,25 +22,80 @@ const removeToken = async () => {
   await SecureStore.deleteItemAsync(TOKEN_KEY);
 };
 
-export const registerUser = async (firstName, lastName, email, password) => {
-  const response = await api.post("/api/auth/register", {
-    first_name: firstName,
-    last_name: lastName,
+
+
+export const registerUser = async (payload) => {
+  const response = await api.post("/api/auth/register", payload);
+  return response.data?.data ?? response.data;
+};
+
+export const verifyEmail = async ({ email, code }) => {
+  const response = await api.post("/api/auth/verify-email", {
     email,
-    password,
+    code,
   });
-  return response.data;
+
+  const result = response.data;
+
+  if (result?.status === "error") {
+    const error = new Error(result.message || "Email verification failed.");
+    error.response = {
+      status: result.code,
+      data: result,
+    };
+    throw error;
+  }
+
+  return result?.data ?? result;
+};
+//for now it s not implemented in backend but we can implement it later if needed
+export const resendVerificationCode = async ({ email }) => {
+  const response = await api.post("/api/auth/resend-verification-code", {
+    email,
+  });
+
+  const result = response.data;
+
+  if (result?.status === "error") {
+    const error = new Error(result.message || "Failed to resend verification code.");
+    error.response = {
+      status: result.code,
+      data: result,
+    };
+    throw error;
+  }
+
+  return result?.data ?? result;
 };
 
 export const loginUser = async (email, password) => {
   const response = await api.post("/api/auth/login", { email, password });
 
-  const token = response?.data?.data?.access_token;
-  if (token) {
-    await saveToken(token);
+  const result = response.data;
+
+  // Your backend error_response returns status: "error"
+  if (result?.status === "error") {
+    await removeToken();
+
+    const error = new Error(result.message || "Login failed.");
+    error.response = {
+      status: result.code,
+      data: result,
+    };
+
+    throw error;
   }
 
-  return response.data;
+  const token = result?.data?.access_token;
+
+  if (!token) {
+    await removeToken();
+    throw new Error("Login failed: no access token received.");
+  }
+
+  await saveToken(token);
+
+  return result;
 };
 
 export const logout = async () => {

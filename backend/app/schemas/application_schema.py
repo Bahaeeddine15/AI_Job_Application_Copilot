@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from typing import List, Optional
 
 # 1. For the /analyze endpoint
@@ -23,3 +23,10 @@ class OptimizeResumeRequest(BaseModel):
 class StandardResponse(BaseModel):
     status: str = "success"
     data: dict
+
+class VerifyEmailRequest(BaseModel):
+    email: EmailStr
+    code: str
+
+class ResendVerificationCodeRequest(BaseModel):
+    email: EmailStr

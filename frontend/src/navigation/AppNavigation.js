@@ -16,6 +16,7 @@ import DownloadResumeScreen from "../screens/DownloadResumeScreen";
 import ProfileScreen from "../screens/ProfileScreen";
 
 import { getUserProfile, logout } from "../services/AuthService";
+import VerifyEmailScreen from "../screens/VerifyEmailScreen";
 
 const Stack = createStackNavigator();
 
@@ -144,6 +145,7 @@ export default function AppNavigator() {
         <Stack.Screen name="UploadResume" component={UploadResumeScreen} />
         <Stack.Screen name="JobDescription" component={JobDescriptionScreen} />
         <Stack.Screen name="Profile" component={ProfileScreen} />
+        <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} options={{ headerShown: false }} />
 
         <Stack.Screen
           name="AnalyzeResume"

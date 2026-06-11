@@ -28,24 +28,27 @@ export default function LoginScreen({ navigation }: any) {
         index: 0,
         routes: [{ name: "Home" }],
       });
-    } catch (err: any) {
-      console.log("Login error:", err.response?.data || err.message);
-      setError(err.response?.data?.message || "Login failed. Please try again.");
-    } finally {
+    } catch (err) {
+        console.log("Login error:", err.response?.data || err.message);
+
+        const status = err.response?.status;
+        const message = err.response?.data?.message || err.message;
+
+        if (status === 403 || message?.toLowerCase().includes("verify")) {
+          setError("Please verify your email before logging in.");
+
+          navigation.navigate("VerifyEmail", {
+            email: email.trim().toLowerCase(),
+          });
+
+          return;
+        }
+
+        setError(message || "Login failed. Please try again.");
+      } finally {
       setLoading(false);
     }
-    // bloc for testing error handling without backend
-    // try {
-    // catch (err: any) {
-    //   const backendMsg = err?.response?.data?.message;
-    //   const networkMsg = err?.message;
-    //   const statusCode = err?.response?.status;
-    //   console.log("LOGIN STATUS:", statusCode);
-    //   console.log("LOGIN ERROR:", err?.response?.data || err);
-    //   setError(backendMsg || networkMsg || "Login failed. Please try again.");
-    // } finally {
-    //   setLoading(false);
-    // }
+   
   };
 
   return (

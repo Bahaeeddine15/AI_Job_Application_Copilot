@@ -1,6 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import Session
-from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, func
 from app.database.base import Base
 
 # this is the user model where we will store the user data for each user.
@@ -25,6 +25,10 @@ class Users(Base):
     created_at = Column(DateTime, default=func.now())
     updated_at = Column(DateTime, default=func.now(), onupdate=func.now())
 
+    is_email_verified = Column(Boolean, default=False)
+    email_verification_code = Column(String, nullable=True)
+    email_verification_expires_at = Column(DateTime, nullable=True)
+
     def __repr__(self):
         return (
             f"<Users(id={self.id}, first_name='{self.first_name}', "
@@ -48,6 +52,9 @@ class Users(Base):
         hashed_password: str,
         first_name: str = "",
         last_name: str = "",
+        is_email_verified: bool = False,
+        email_verification_code: Optional[str] = None,
+        email_verification_expires_at: Optional[DateTime] = None,
         professional_email: Optional[str] = None,
         phone_number: Optional[str] = None,
         linkedin_url: Optional[str] = None,
@@ -59,6 +66,9 @@ class Users(Base):
             last_name=last_name,
             email=email,
             password_hash=hashed_password,
+            is_email_verified=is_email_verified,
+            email_verification_code=email_verification_code,
+            email_verification_expires_at=email_verification_expires_at,
             professional_email=professional_email,
             phone_number=phone_number,
             linkedin_url=linkedin_url,

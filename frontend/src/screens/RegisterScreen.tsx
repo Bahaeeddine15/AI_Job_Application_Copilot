@@ -19,37 +19,51 @@ export default function RegisterScreen({ navigation }: any) {
   const INPUT_PLACEHOLDER_COLOR = "#7A5A4A";
 
   const handleRegister = async () => {
-    if (!firstName.trim() || !lastName.trim() || !email.trim() || !password.trim()) {
-      setError("Please fill in all fields");
-      return;
-    }
+  const cleanFirstName = firstName.trim();
+  const cleanLastName = lastName.trim();
+  const cleanEmail = email.trim().toLowerCase();
+  const cleanPassword = password.trim();
 
-    if (password !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+  if (!cleanFirstName || !cleanLastName || !cleanEmail || !cleanPassword) {
+    setError("Please fill in all fields");
+    return;
+  }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters");
-      return;
-    }
+  if (password !== confirmPassword) {
+    setError("Passwords do not match");
+    return;
+  }
 
-    try {
-      setError("");
-      setLoading(true);
+  if (cleanPassword.length < 6) {
+    setError("Password must be at least 6 characters");
+    return;
+  }
 
-      const data = await registerUser(firstName, lastName, email, password);
-      console.log("Registration success:", data);
+  try {
+    setError("");
+    setLoading(true);
 
-      navigation.navigate("Login");
-    } catch (err: any) {
-      console.log("Registration error:", err.response?.data || err.message);
-      setError(err.response?.data?.message || "Registration failed. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
+    await registerUser({
+      first_name: cleanFirstName,
+      last_name: cleanLastName,
+      email: cleanEmail,
+      password: cleanPassword,
+    });
 
+    navigation.navigate("VerifyEmail", {
+      email: cleanEmail,
+    });
+  } catch (err: any) {
+    console.log("Registration error:", err.response?.data || err.message);
+
+    setError(
+      err.response?.data?.message ||
+        "Registration failed. Please try again."
+    );
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <View style={Platform.OS === "web" ? styles.webPage : styles.mobilePage}>
     <SafeAreaView style={styles.container} edges={["bottom"]}>
