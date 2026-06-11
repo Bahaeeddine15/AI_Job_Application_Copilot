@@ -161,6 +161,10 @@ class AIService:
                     - Write 3 to 5 concise paragraphs
                     - Use clear, natural English
                     - Tailor the content to the resume and job description
+                    - Write the cover letter in the same language as the job description
+                    - If the job description is in French, write the cover letter in French
+                    - If the job description is in English, write the cover letter in English
+                    - If the job description contains multiple languages, use the main language of the job description
                     - No markdown
                     - No bullet points
                     - No placeholders

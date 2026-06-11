@@ -82,6 +82,11 @@ export default function ResultsScreen({ route }: ResultsScreenProps) {
                 {coverLetter || "No cover letter generated yet."}
               </Text>
             </Card.Content>
+            <Text style={{ padding: 12, fontSize: 12, color: "#956643" }}>
+              *Your cover letter has been generated based on the job description and your profile.
+               Please review and customize it before sending your application.
+               You can download it anytime from the History screen.
+            </Text>
           </Card>
         </View>
       </ScrollView>

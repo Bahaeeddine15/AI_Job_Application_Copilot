@@ -112,6 +112,7 @@ def get_profile(
             "id": current_user.id,
             "first_name": current_user.first_name,
             "last_name": current_user.last_name,
+            "email": current_user.email,
             "professional_email": current_user.professional_email,
             "phone_number": current_user.phone_number,
             "linkedin_url": current_user.linkedin_url,
